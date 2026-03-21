@@ -341,9 +341,9 @@ export default function BuyerPage() {
 
   const isLoading = walletLoading || taxidLoading || companyLoading;
 
-  // DB fallback: when chain returns not-valid, check if supplier is approved in DB
+  // Fetch DB record (for tokenId and registry fallback)
   useEffect(() => {
-    if (!walletData || walletData[0]) { setDbSupplier(null); return; }
+    if (!walletData) { setDbSupplier(null); return; }
     if (!target) return;
     axios.get(`${API}/api/supplier/${target}`)
       .then(r => setDbSupplier(r.data))
@@ -351,7 +351,7 @@ export default function BuyerPage() {
   }, [walletData, target]);
 
   useEffect(() => {
-    if (!taxidData || taxidData[0]) { setDbSupplier(null); return; }
+    if (!taxidData) { setDbSupplier(null); return; }
     if (!taxIdTarget) return;
     const w = taxidData[2] as string;
     if (!w || w === "0x0000000000000000000000000000000000000000") { setDbSupplier(null); return; }

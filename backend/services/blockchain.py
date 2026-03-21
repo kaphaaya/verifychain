@@ -24,6 +24,17 @@ CONTRACT_ABI = [
         "type": "function",
     },
     {
+        "anonymous": False,
+        "inputs": [
+            {"indexed": True,  "name": "supplier",     "type": "address"},
+            {"indexed": True,  "name": "tokenId",      "type": "uint256"},
+            {"indexed": False, "name": "companyName",  "type": "string"},
+            {"indexed": False, "name": "tier",         "type": "uint8"},
+        ],
+        "name": "CredentialIssued",
+        "type": "event",
+    },
+    {
         "inputs": [
             {"name": "_tokenId", "type": "uint256"},
             {"name": "_reason",  "type": "string"},
@@ -171,7 +182,7 @@ def _send_tx(fn):
     signed  = w3.eth.account.sign_transaction(tx, private_key=ADMIN_PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-    return receipt.transactionHash.hex(), receipt.status
+    return receipt.transactionHash.hex(), receipt.status, receipt
 
 
 def mint_credential(supplier_wallet, company_name, tax_id, country, docs_ipfs_hash, tier):
@@ -180,12 +191,22 @@ def mint_credential(supplier_wallet, company_name, tax_id, country, docs_ipfs_ha
         Web3.to_checksum_address(supplier_wallet),
         company_name, tax_id, country, docs_ipfs_hash, tier,
     )
-    return _send_tx(fn)
+    tx_hash, status, receipt = _send_tx(fn)
+    token_id = None
+    try:
+        logs = contract.events.CredentialIssued().process_receipt(receipt)
+        if logs:
+            token_id = int(logs[0]['args']['tokenId'])
+    except Exception:
+        pass
+    return tx_hash, status, token_id
 
 
 def revoke_credential(token_id: int, reason: str):
-    return _send_tx(get_contract().functions.revokeCredential(token_id, reason))
+    tx_hash, status, _ = _send_tx(get_contract().functions.revokeCredential(token_id, reason))
+    return tx_hash, status
 
 
 def renew_credential(token_id: int):
-    return _send_tx(get_contract().functions.renewCredential(token_id))
+    tx_hash, status, _ = _send_tx(get_contract().functions.renewCredential(token_id))
+    return tx_hash, status

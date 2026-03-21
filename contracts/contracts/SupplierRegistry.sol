@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title SupplierRegistry
@@ -181,6 +183,38 @@ contract SupplierRegistry is ERC721, Ownable {
         uint256 tokenId = supplierToken[supplierWallet];
         cred    = credentials[tokenId];
         isValid = cred.isActive && block.timestamp < cred.expiresAt;
+    }
+
+    // ─────────────────────────────────────────────
+    // TOKEN URI — on-chain Base64 JSON metadata
+    // ─────────────────────────────────────────────
+
+    function _buildAttributes(uint256 tokenId) internal view returns (string memory) {
+        Credential memory cred = credentials[tokenId];
+        string memory tierName = cred.tier == 1 ? "Basic" : cred.tier == 2 ? "Standard" : "Premium";
+        return string(abi.encodePacked(
+            '[',
+            '{"trait_type":"Company","value":"',    cred.companyName, '"},',
+            '{"trait_type":"Tax ID","value":"',     cred.taxId,       '"},',
+            '{"trait_type":"Country","value":"',    cred.country,     '"},',
+            '{"trait_type":"Tier","value":"',       tierName,         '"},',
+            '{"trait_type":"Issued At","value":',   Strings.toString(cred.issuedAt),  '},',
+            '{"trait_type":"Expires At","value":', Strings.toString(cred.expiresAt), '},',
+            '{"trait_type":"Active","value":',      cred.isActive ? "true" : "false", '}',
+            ']'
+        ));
+    }
+
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_exists(tokenId), "Token does not exist");
+        string memory attrs = _buildAttributes(tokenId);
+        string memory json = Base64.encode(bytes(string(abi.encodePacked(
+            '{"name":"VerifyChain Credential #', Strings.toString(tokenId), '",',
+            '"description":"Soul-bound supplier verification credential on Arbitrum.",',
+            '"attributes":', attrs,
+            '}'
+        ))));
+        return string(abi.encodePacked("data:application/json;base64,", json));
     }
 
     // ─────────────────────────────────────────────

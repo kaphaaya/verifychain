@@ -80,7 +80,7 @@ async def approve_supplier(supplier_id: int, body: ApproveBody, db: AsyncSession
         if docs_ipfs_hash.startswith("local:"):
             docs_ipfs_hash = "ipfs://local"
         try:
-            tx_hash, success = mint_credential(
+            tx_hash, success, token_id = mint_credential(
                 supplier_wallet=supplier.wallet, company_name=supplier.company_name,
                 tax_id=supplier.tax_id, country=supplier.country,
                 docs_ipfs_hash=docs_ipfs_hash, tier=body.tier,
@@ -89,6 +89,8 @@ async def approve_supplier(supplier_id: int, body: ApproveBody, db: AsyncSession
             raise HTTPException(500, f"Blockchain mint failed: {str(e)}")
         if not success:
             raise HTTPException(500, "Transaction reverted on-chain")
+        if token_id is not None:
+            supplier.token_id = token_id
 
     supplier.status = "approved"
     supplier.tier = body.tier
