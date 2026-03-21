@@ -75,8 +75,8 @@ async def approve_supplier(supplier_id: int, body: ApproveBody, db: AsyncSession
         raise HTTPException(500, "Transaction reverted on-chain")
     supplier.status = "approved"
     supplier.tier = body.tier
-    supplier.approved_at = datetime.now(timezone.utc)
-    supplier.expires_at = datetime.now(timezone.utc) + timedelta(days=365)
+    supplier.approved_at = datetime.utcnow()
+    supplier.expires_at = datetime.utcnow() + timedelta(days=365)
     try:
         supplier.rejection_reason = None
     except:
