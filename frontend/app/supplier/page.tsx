@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://verifychain-zeta.vercel.app";
 
 function Nav() {
   return (
@@ -26,59 +27,77 @@ function Nav() {
   );
 }
 
-function DropZone({ label, hint, required, file, onDrop }: {
+function DropZone({ label, hint, required, file, onDrop, error }: {
   label: string; hint: string; required?: boolean;
-  file: File | null; onDrop: (f: File) => void;
+  file: File | null; onDrop: (f: File) => void; error?: string;
 }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (files) => {
       if (!files[0]) return;
-      if (files[0].type !== "application/pdf") {
-        toast.error(`${label} must be a PDF`);
-        return;
-      }
+      if (files[0].type !== "application/pdf") { toast.error(`${label} must be a PDF`); return; }
       onDrop(files[0]);
     },
     accept: { "application/pdf": [".pdf"] },
-    maxFiles: 1,
-    maxSize: 10 * 1024 * 1024,
+    maxFiles: 1, maxSize: 10 * 1024 * 1024,
   });
 
   return (
-    <div {...getRootProps()} style={{
-      border: `1.5px dashed ${file ? "rgba(0,229,160,0.4)" : isDragActive ? "rgba(0,212,255,0.5)" : "rgba(255,255,255,0.1)"}`,
-      borderRadius: 14, padding: "16px 18px", cursor: "pointer",
-      background: file ? "rgba(0,229,160,0.04)" : isDragActive ? "rgba(0,212,255,0.04)" : "var(--surface2)",
-      transition: "all 0.2s", display: "flex", alignItems: "center", gap: 14,
-    }}>
-      <input {...getInputProps()} />
-      <div style={{
-        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: file ? "rgba(0,229,160,0.1)" : "rgba(255,255,255,0.05)",
-        border: `1px solid ${file ? "rgba(0,229,160,0.2)" : "rgba(255,255,255,0.08)"}`,
+    <div>
+      <div {...getRootProps()} style={{
+        border: `1.5px dashed ${file ? "rgba(0,229,160,0.4)" : isDragActive ? "rgba(0,212,255,0.5)" : error ? "rgba(255,77,106,0.4)" : "rgba(255,255,255,0.1)"}`,
+        borderRadius: 14, padding: "16px 18px", cursor: "pointer",
+        background: file ? "rgba(0,229,160,0.04)" : isDragActive ? "rgba(0,212,255,0.04)" : "var(--surface2)",
+        transition: "all 0.2s", display: "flex", alignItems: "center", gap: 14,
       }}>
-        {file
-          ? <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9L7.5 12.5L14 6" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          : <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3V12M9 3L6 6M9 3L12 6M3 15H15" stroke="rgba(160,180,220,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-        }
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: file ? "var(--green)" : "var(--text)" }}>
-          {label} {required && <span style={{ color: "var(--red)" }}>*</span>}
+        <input {...getInputProps()} />
+        <div style={{
+          width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: file ? "rgba(0,229,160,0.1)" : "rgba(255,255,255,0.05)",
+          border: `1px solid ${file ? "rgba(0,229,160,0.2)" : "rgba(255,255,255,0.08)"}`,
+        }}>
+          {file
+            ? <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9L7.5 12.5L14 6" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            : <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3V12M9 3L6 6M9 3L12 6M3 15H15" stroke="rgba(160,180,220,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          }
         </div>
-        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-          {file ? `✓ ${file.name} (${(file.size / 1024).toFixed(0)}KB)` : hint}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: file ? "var(--green)" : "var(--text)" }}>
+            {label} {required && <span style={{ color: "var(--red)" }}>*</span>}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+            {file ? `✓ ${file.name} (${(file.size / 1024).toFixed(0)}KB)` : hint}
+          </div>
         </div>
       </div>
+      {error && <div style={{fontSize:11,color:"var(--red)",marginTop:4}}>⚠ {error}</div>}
     </div>
   );
 }
 
-const TIERS = [
-  { value: "1", name: "Basic",    price: "$99/yr",  desc: "Small businesses", features: ["Business reg. verified", "Soul-bound NFT", "Annual renewal"] },
-  { value: "2", name: "Standard", price: "$199/yr", desc: "Established companies", features: ["Everything in Basic", "Bank verified", "Standard badge"], hot: true },
-  { value: "3", name: "Premium",  price: "$399/yr", desc: "Enterprise", features: ["Everything in Standard", "Chainlink-verified", "Priority support"] },
+// Time-based pricing plans
+const PLANS = [
+  {
+    value: "30",   tier: 1, label: "Monthly",      price: "$29",  period: "/month",
+    desc: "Try it out", savings: null,
+    features: ["Soul-bound NFT", "Business verified", "30-day validity"],
+  },
+  {
+    value: "90",   tier: 1, label: "Quarterly",    price: "$79",  period: "/quarter",
+    desc: "Most popular", savings: "Save 9%",
+    features: ["Soul-bound NFT", "Business verified", "90-day validity"],
+  },
+  {
+    value: "180",  tier: 2, label: "Semi-annual",  price: "$149", period: "/6 months",
+    desc: "Best value", savings: "Save 14%",
+    features: ["All Basic features", "Bank verified", "180-day validity", "Standard badge"],
+    hot: true,
+  },
+  {
+    value: "365",  tier: 3, label: "Annual",       price: "$199", period: "/year",
+    desc: "Enterprise", savings: "Save 43% vs monthly",
+    features: ["All Standard features", "Priority review", "365-day validity", "Premium badge"],
+  },
 ];
 
 const COUNTRIES = [
@@ -112,65 +131,197 @@ function Field({ label, required, hint, error, children }: {
   );
 }
 
-function StatusTimeline({ status }: { status: any }) {
-  const steps = [
-    { key: "submitted", label: "Application submitted", done: true },
-    { key: "reviewing", label: "Under review",          done: status.status !== "pending" },
-    { key: "decision",  label: status.status === "approved" ? "Approved & minted" : status.status === "rejected" ? "Not approved" : "Decision pending",
-      done: ["approved","rejected","revoked"].includes(status.status),
-      approved: status.status === "approved",
-      rejected: status.status === "rejected",
-    },
-  ];
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { color: string; bg: string; border: string }> = {
+    approved: { color: "var(--green)",   bg: "rgba(0,229,160,0.08)",   border: "rgba(0,229,160,0.2)" },
+    pending:  { color: "#ffb547",        bg: "rgba(255,181,71,0.08)",  border: "rgba(255,181,71,0.2)" },
+    rejected: { color: "var(--red)",     bg: "rgba(255,77,106,0.08)",  border: "rgba(255,77,106,0.2)" },
+  };
+  const c = config[status] || config.pending;
+  return (
+    <span style={{
+      fontSize:10,fontFamily:"DM Mono,monospace",padding:"3px 10px",borderRadius:99,fontWeight:700,
+      color:c.color, background:c.bg, border:`1px solid ${c.border}`,letterSpacing:"0.05em",
+    }}>{status.toUpperCase()}</span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Existing credentials dashboard card
+// ─────────────────────────────────────────────────────────────────
+function CredentialCard({ app, onReapply }: { app: any; onReapply: () => void }) {
+  const tierNames = ["","Basic","Standard","Premium"];
+  const expires = app.expiresAt ? new Date(app.expiresAt).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"}) : "—";
+
+  if (app.status === "approved") return (
+    <div style={{
+      padding:"20px 22px",borderRadius:16,
+      border:"1px solid rgba(0,229,160,0.25)",background:"rgba(0,229,160,0.03)",
+    }}>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:14}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:16,marginBottom:4}}>{app.companyName}</div>
+          <div style={{fontSize:12,color:"var(--muted2)"}}>{app.country} · {app.taxId}</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+          <span style={{
+            fontSize:11,fontFamily:"DM Mono,monospace",padding:"3px 10px",borderRadius:99,fontWeight:700,
+            color:"var(--green)",background:"rgba(0,229,160,0.08)",border:"1px solid rgba(0,229,160,0.2)",
+          }}>VERIFIED</span>
+          {app.tokenId && (
+            <span style={{
+              fontSize:11,fontFamily:"DM Mono,monospace",padding:"3px 10px",borderRadius:99,
+              color:"var(--accent)",background:"rgba(0,212,255,0.06)",border:"1px solid rgba(0,212,255,0.15)",
+            }}>#{app.tokenId}</span>
+          )}
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+        {[
+          {l:"Tier",    v:tierNames[app.tier]||"—"},
+          {l:"Expires", v:expires},
+          {l:"Network", v:"Arbitrum"},
+        ].map(({l,v})=>(
+          <div key={l} style={{padding:"8px 10px",borderRadius:8,background:"var(--surface2)",border:"1px solid var(--border)"}}>
+            <div style={{fontSize:9,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:3}}>{l}</div>
+            <div style={{fontSize:12,fontWeight:600}}>{v}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap" as const}}>
+        <button className="btn btn-ghost" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>{
+          navigator.clipboard.writeText(`${APP_URL}/verify/${app.wallet}`);
+          toast.success("Share link copied!");
+        }}>
+          Share verification
+        </button>
+        <a href={`https://sepolia.arbiscan.io/address/${app.wallet}`} target="_blank" rel="noreferrer"
+          className="btn btn-ghost" style={{fontSize:12,padding:"6px 12px"}}>
+          View on Arbiscan →
+        </a>
+      </div>
+    </div>
+  );
+
+  if (app.status === "pending") return (
+    <div style={{padding:"20px 22px",borderRadius:16,border:"1px solid rgba(255,181,71,0.2)",background:"rgba(255,181,71,0.03)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:3}}>{app.companyName}</div>
+          <div style={{fontSize:12,color:"var(--muted2)"}}>{app.country}</div>
+        </div>
+        <StatusBadge status="pending"/>
+      </div>
+      <div style={{marginTop:12,fontSize:13,color:"#ffb547",lineHeight:1.6}}>
+        Under review — you'll receive an email within 24 hours.
+      </div>
+    </div>
+  );
+
+  if (app.status === "rejected") return (
+    <div style={{padding:"20px 22px",borderRadius:16,border:"1px solid rgba(255,77,106,0.2)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:10}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:3}}>{app.companyName}</div>
+          <div style={{fontSize:12,color:"var(--muted2)"}}>{app.country}</div>
+        </div>
+        <StatusBadge status="rejected"/>
+      </div>
+      {app.rejectionReason && (
+        <div style={{padding:"10px 12px",borderRadius:8,marginBottom:12,background:"rgba(255,77,106,0.06)",border:"1px solid rgba(255,77,106,0.12)"}}>
+          <div style={{fontSize:10,color:"var(--red)",fontFamily:"DM Mono,monospace",marginBottom:4}}>REJECTION REASON</div>
+          <div style={{fontSize:13,lineHeight:1.6}}>{app.rejectionReason}</div>
+        </div>
+      )}
+      {app.canReapply && (
+        <button onClick={onReapply} className="btn btn-primary" style={{fontSize:13}}>
+          Reapply ({app.attemptsLeft} attempt{app.attemptsLeft!==1?"s":""} left) →
+        </button>
+      )}
+    </div>
+  );
+
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Email Auth Panel
+// ─────────────────────────────────────────────────────────────────
+function AuthPanel({ onAuth }: { onAuth: (token: string, email: string, wallet: string|null) => void }) {
+  const [mode, setMode]     = useState<"login"|"register">("login");
+  const [email, setEmail]   = useState("");
+  const [pass, setPass]     = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const submit = async () => {
+    if (!email || !pass) return toast.error("Fill in email and password");
+    setLoading(true);
+    try {
+      const endpoint = mode === "register" ? "/api/supplier/auth/register" : "/api/supplier/auth/login";
+      const { data } = await axios.post(`${API}${endpoint}`, { email, password: pass });
+      onAuth(data.sessionToken, data.email, data.wallet);
+      toast.success(mode === "register" ? "Account created!" : "Welcome back!");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || (mode === "register" ? "Registration failed" : "Invalid credentials"));
+    } finally { setLoading(false); }
+  };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:0}}>
-      {steps.map((step, i) => (
-        <div key={step.key} style={{display:"flex",gap:14,alignItems:"flex-start"}}>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",flexShrink:0}}>
-            <div style={{
-              width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
-              background: step.done
-                ? step.rejected ? "rgba(255,77,106,0.15)" : "rgba(0,229,160,0.15)"
-                : "rgba(255,255,255,0.05)",
-              border: `1.5px solid ${step.done ? step.rejected ? "rgba(255,77,106,0.4)" : "rgba(0,229,160,0.4)" : "rgba(255,255,255,0.1)"}`,
-            }}>
-              {step.done
-                ? step.rejected
-                  ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 3L9 9M9 3L3 9" stroke="var(--red)" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  : <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 4" stroke="var(--green)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                : <div style={{width:6,height:6,borderRadius:"50%",background:"rgba(255,255,255,0.2)"}}/>
-              }
-            </div>
-            {i < steps.length - 1 && (
-              <div style={{width:1.5,height:24,background:step.done?"rgba(0,229,160,0.2)":"rgba(255,255,255,0.06)",margin:"2px 0"}}/>
-            )}
-          </div>
-          <div style={{paddingTop:4,paddingBottom:i<steps.length-1?24:0}}>
-            <div style={{
-              fontSize:13,fontWeight:600,
-              color: step.done ? step.rejected ? "var(--red)" : "var(--green)" : "var(--muted)",
-            }}>{step.label}</div>
-          </div>
-        </div>
-      ))}
+    <div className="card animate-in" style={{padding:"28px"}}>
+      <div style={{fontWeight:700,fontSize:17,marginBottom:6}}>
+        {mode === "register" ? "Create account" : "Sign in with email"}
+      </div>
+      <div style={{fontSize:13,color:"var(--muted2)",marginBottom:20}}>
+        {mode === "register"
+          ? "Create an account to track your applications across sessions."
+          : "Sign in to see your existing applications and track status."}
+      </div>
+      <div style={{display:"flex",flexDirection:"column" as const,gap:12}}>
+        <input className="input" type="email" placeholder="your@email.com"
+          value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/>
+        <input className="input" type="password" placeholder="Password"
+          value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submit()}/>
+        <button onClick={submit} disabled={loading} className="btn btn-primary" style={{fontSize:14}}>
+          {loading ? <span className="spinner"/> : mode === "register" ? "Create account →" : "Sign in →"}
+        </button>
+        <button onClick={()=>setMode(m=>m==="login"?"register":"login")}
+          style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"var(--accent)",fontFamily:"Syne,sans-serif"}}>
+          {mode === "login" ? "No account? Create one →" : "Already have an account? Sign in"}
+        </button>
+      </div>
     </div>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Main Page
+// ─────────────────────────────────────────────────────────────────
 export default function SupplierPage() {
   const { address, isConnected } = useAccount();
-  const [step, setStep] = useState<"form"|"done"|"status">("form");
-  const [loading, setLoading] = useState(false);
-  const [appStatus, setAppStatus] = useState<any>(null);
-  const [errors, setErrors] = useState<Record<string,string>>({});
+  const [loading, setLoading]     = useState(false);
+  const [errors, setErrors]       = useState<Record<string,string>>({});
+
+  // Auth state
+  const [authMode, setAuthMode]     = useState<"wallet"|"email"|null>(null);
+  const [emailToken, setEmailToken] = useState<string|null>(null);
+  const [emailUser, setEmailUser]   = useState<string|null>(null);
+
+  // Effective wallet: MetaMask or from email account
+  const effectiveWallet = isConnected ? address! : null;
+
+  // All applications for wallet
+  const [allApps, setAllApps]     = useState<any[]|null>(null);
+  const [appsLoading, setAppsLoading] = useState(false);
+  const [showForm, setShowForm]   = useState(false);
+  const [personalCollapsed, setPersonalCollapsed] = useState(false);
 
   const [form, setForm] = useState({
     company_name:"", registration_number:"", tax_id:"",
     country_of_registration:"", country_of_operation:"",
     email:"", phone:"", website:"", linkedin:"",
-    director_name:"", national_id:"", tier:"2",
+    director_name:"", national_id:"",
   });
+  const [selectedPlan, setSelectedPlan] = useState(PLANS[3]); // default Annual
 
   const [files, setFiles] = useState<{
     business_reg:File|null; tax_doc:File|null; bank_doc:File|null; id_doc:File|null;
@@ -180,6 +331,36 @@ export default function SupplierPage() {
     setForm(f=>({...f,[k]:v}));
     setErrors(e=>({...e,[k]:""}));
   };
+
+  // Load all applications when wallet connects
+  useEffect(() => {
+    if (!effectiveWallet) { setAllApps(null); setShowForm(false); return; }
+    setAppsLoading(true);
+    axios.get(`${API}/api/supplier/all/${effectiveWallet}`)
+      .then(r => {
+        setAllApps(r.data);
+        // Pre-fill personal info from most recent application
+        const last = r.data[0];
+        if (last) {
+          try {
+            const meta = last.extraMetadata ? JSON.parse(last.extraMetadata) : {};
+            if (meta.director_name) {
+              setForm(f => ({ ...f, director_name: meta.director_name || "", national_id: meta.national_id || "" }));
+              setPersonalCollapsed(true);
+            }
+          } catch {}
+        }
+        // If no approved apps, auto-open the form
+        if (!r.data.some((a:any) => a.status === "approved")) {
+          setShowForm(true);
+        }
+      })
+      .catch(() => {
+        setAllApps([]);
+        setShowForm(true);
+      })
+      .finally(() => setAppsLoading(false));
+  }, [effectiveWallet]);
 
   const validate = () => {
     const e: Record<string,string> = {};
@@ -191,8 +372,10 @@ export default function SupplierPage() {
     if (!form.email.trim())              e.email = "Required";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Invalid email";
     if (!form.phone.trim())              e.phone = "Required";
-    if (!form.director_name.trim())      e.director_name = "Required";
-    if (!form.national_id.trim())        e.national_id = "Required";
+    if (!personalCollapsed) {
+      if (!form.director_name.trim())    e.director_name = "Required";
+      if (!form.national_id.trim())      e.national_id = "Required";
+    }
     if (!files.business_reg)             e.business_reg = "Required";
     if (!files.tax_doc)                  e.tax_doc = "Required";
     if (!files.bank_doc)                 e.bank_doc = "Required";
@@ -201,29 +384,18 @@ export default function SupplierPage() {
     return Object.keys(e).length === 0;
   };
 
-  const checkStatus = async () => {
-    if (!address) return;
-    setLoading(true);
-    try {
-      const { data } = await axios.get(`${API}/api/supplier/${address}`);
-      setAppStatus(data);
-      setStep("status");
-    } catch {
-      toast.error("No application found for this wallet.");
-    } finally { setLoading(false); }
-  };
-
   const submit = async () => {
-    if (!isConnected) return toast.error("Connect your wallet first");
+    if (!effectiveWallet) return toast.error("Connect your wallet first");
     if (!validate()) return toast.error("Please fix the errors below");
     setLoading(true);
     const fd = new FormData();
-    fd.append("wallet", address!);
-    fd.append("company_name", form.company_name);
-    fd.append("tax_id", form.tax_id);
-    fd.append("country", form.country_of_registration);
-    fd.append("email", form.email);
-    fd.append("tier", form.tier);
+    fd.append("wallet",         effectiveWallet);
+    fd.append("company_name",   form.company_name);
+    fd.append("tax_id",         form.tax_id);
+    fd.append("country",        form.country_of_registration);
+    fd.append("email",          form.email);
+    fd.append("tier",           String(selectedPlan.tier));
+    fd.append("validity_days",  selectedPlan.value);
     fd.append("metadata", JSON.stringify({
       registration_number: form.registration_number,
       country_of_operation: form.country_of_operation,
@@ -240,17 +412,27 @@ export default function SupplierPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       toast.success("Application submitted!");
-      setStep("done");
+      setShowForm(false);
+      // Reload all apps
+      const r = await axios.get(`${API}/api/supplier/all/${effectiveWallet}`);
+      setAllApps(r.data);
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || "Submission failed");
     } finally { setLoading(false); }
   };
 
+  const handleReapply = (app: any) => {
+    setForm(f => ({ ...f, company_name: app.companyName, tax_id: app.taxId, country_of_registration: app.country }));
+    setShowForm(true);
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }), 100);
+  };
+
   return (
     <div style={{minHeight:"100vh",background:"var(--bg)"}}>
       <Nav/>
-      <div style={{maxWidth:700,margin:"0 auto",padding:"48px 24px 80px"}}>
+      <div style={{maxWidth:700,margin:"0 auto",padding:"48px 24px 100px"}}>
 
+        {/* Hero */}
         <div className="animate-in" style={{marginBottom:36}}>
           <div className="eyebrow" style={{marginBottom:10}}>Supplier Portal</div>
           <h1 style={{fontSize:36,fontWeight:800,letterSpacing:"-0.035em",lineHeight:1.1}}>
@@ -262,29 +444,68 @@ export default function SupplierPage() {
           </p>
         </div>
 
-        {!isConnected && (
-          <div className="card animate-in" style={{textAlign:"center",padding:"52px 32px"}}>
-            <div style={{width:56,height:56,borderRadius:16,margin:"0 auto 20px",display:"flex",
-              alignItems:"center",justifyContent:"center",background:"rgba(0,212,255,0.08)",
-              border:"1px solid rgba(0,212,255,0.2)"}}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <rect x="2" y="6" width="20" height="14" rx="3" stroke="var(--accent)" strokeWidth="1.5"/>
-                <path d="M16 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" fill="var(--accent)"/>
-                <path d="M2 10h20" stroke="var(--accent)" strokeWidth="1.5"/>
-              </svg>
+        {/* Connect options */}
+        {!isConnected && !emailToken && (
+          <div className="card animate-in" style={{marginBottom:0}}>
+            <div style={{fontWeight:700,fontSize:17,marginBottom:6}}>Connect to get started</div>
+            <div style={{fontSize:13,color:"var(--muted2)",marginBottom:24,lineHeight:1.65}}>
+              Connect your wallet to verify your business and receive an on-chain credential.
+              Or sign in with email to track existing applications.
             </div>
-            <div style={{fontWeight:700,fontSize:18,marginBottom:8}}>Connect your business wallet</div>
-            <div style={{color:"var(--muted2)",fontSize:14,marginBottom:24}}>
-              Your credential will be permanently issued to this wallet address
+            <div style={{display:"flex",flexDirection:"column" as const,gap:12}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <ConnectButton/>
+                <span style={{fontSize:13,color:"var(--muted)"}}>— recommended</span>
+              </div>
+              <div style={{
+                display:"flex",alignItems:"center",gap:12,color:"var(--muted)",fontSize:12,
+                fontFamily:"DM Mono,monospace",margin:"4px 0",
+              }}>
+                <span style={{flex:1,height:1,background:"var(--border)"}}/>
+                OR
+                <span style={{flex:1,height:1,background:"var(--border)"}}/>
+              </div>
+              <button
+                onClick={()=>setAuthMode("email")}
+                className="btn btn-ghost"
+                style={{fontSize:13,justifyContent:"center"}}>
+                Sign in with email
+              </button>
             </div>
-            <ConnectButton/>
+
+            {authMode === "email" && (
+              <div style={{marginTop:20,paddingTop:20,borderTop:"1px solid var(--border)"}}>
+                <AuthPanel onAuth={(token, email, wallet) => {
+                  setEmailToken(token);
+                  setEmailUser(email);
+                  setAuthMode(null);
+                }}/>
+              </div>
+            )}
           </div>
         )}
 
-        {isConnected && step==="form" && (
-          <div style={{display:"flex",flexDirection:"column",gap:20}}>
+        {/* Email-only logged in — prompt to connect wallet */}
+        {!isConnected && emailToken && (
+          <div className="card animate-in" style={{
+            padding:"20px 22px",marginBottom:20,
+            border:"1px solid rgba(0,212,255,0.2)",background:"rgba(0,212,255,0.04)",
+          }}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:14,marginBottom:3}}>Signed in as {emailUser}</div>
+                <div style={{fontSize:13,color:"var(--muted2)"}}>Connect your wallet to submit a new application</div>
+              </div>
+              <ConnectButton/>
+            </div>
+          </div>
+        )}
 
-            <div className="card-sm animate-in" style={{display:"flex",alignItems:"center",gap:12}}>
+        {/* Wallet connected — show dashboard */}
+        {isConnected && (
+          <>
+            {/* Wallet address pill */}
+            <div className="card-sm animate-in" style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
               <div style={{width:36,height:36,borderRadius:10,background:"rgba(0,229,160,0.08)",
                 border:"1px solid rgba(0,229,160,0.2)",display:"flex",alignItems:"center",
                 justifyContent:"center",flexShrink:0}}>
@@ -293,325 +514,254 @@ export default function SupplierPage() {
                   <circle cx="8" cy="8" r="2" fill="var(--green)"/>
                 </svg>
               </div>
-              <div>
+              <div style={{flex:1}}>
                 <div style={{fontSize:11,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:2}}>
-                  CREDENTIAL WILL BE ISSUED TO
+                  CREDENTIAL WALLET
                 </div>
                 <div style={{fontFamily:"DM Mono,monospace",fontSize:12,color:"var(--text)"}}>{address}</div>
               </div>
             </div>
 
-            <div className="card animate-in-1">
-              <div style={{fontWeight:700,fontSize:16,marginBottom:20}}>🏢 Business information</div>
-              <div style={{display:"flex",flexDirection:"column",gap:16}}>
-                <Field label="Legal company name" required error={errors.company_name}>
-                  <input className="input" placeholder="Acme Global Supplies Ltd"
-                    value={form.company_name} onChange={e=>set("company_name",e.target.value)}/>
-                </Field>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                  <Field label="Company registration number" required error={errors.registration_number}>
-                    <input className="input" placeholder="RC-1234567"
-                      value={form.registration_number} onChange={e=>set("registration_number",e.target.value)}/>
-                  </Field>
-                  <Field label="Tax identification number" required hint="VAT, EIN, TIN or equivalent" error={errors.tax_id}>
-                    <input className="input" placeholder="1234567890"
-                      value={form.tax_id} onChange={e=>set("tax_id",e.target.value)}/>
-                  </Field>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                  <Field label="Country of registration" required error={errors.country_of_registration}>
-                    <select className="input" value={form.country_of_registration}
-                      onChange={e=>set("country_of_registration",e.target.value)}
-                      style={{appearance:"none",cursor:"pointer"}}>
-                      <option value="">Select country...</option>
-                      {COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Country of operation" required error={errors.country_of_operation}>
-                    <select className="input" value={form.country_of_operation}
-                      onChange={e=>set("country_of_operation",e.target.value)}
-                      style={{appearance:"none",cursor:"pointer"}}>
-                      <option value="">Select country...</option>
-                      {COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </Field>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                  <Field label="Business email" required error={errors.email}>
-                    <input className="input" type="email" placeholder="ops@company.com"
-                      value={form.email} onChange={e=>set("email",e.target.value)}/>
-                  </Field>
-                  <Field label="Phone number" required hint="+1 555 000 0000" error={errors.phone}>
-                    <input className="input" placeholder="+234 801 234 5678"
-                      value={form.phone} onChange={e=>set("phone",e.target.value)}/>
-                  </Field>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                  <Field label="Website" hint="Optional">
-                    <input className="input" placeholder="https://company.com"
-                      value={form.website} onChange={e=>set("website",e.target.value)}/>
-                  </Field>
-                  <Field label="LinkedIn company page" hint="Optional">
-                    <input className="input" placeholder="https://linkedin.com/company/..."
-                      value={form.linkedin} onChange={e=>set("linkedin",e.target.value)}/>
-                  </Field>
-                </div>
+            {/* Existing applications */}
+            {appsLoading && (
+              <div className="card" style={{textAlign:"center",padding:"32px",marginBottom:20}}>
+                <div className="spinner" style={{width:24,height:24,margin:"0 auto 10px",borderWidth:2}}/>
+                <div style={{fontSize:13,color:"var(--muted2)"}}>Loading your applications…</div>
               </div>
-            </div>
+            )}
 
-            <div className="card animate-in-2">
-              <div style={{fontWeight:700,fontSize:16,marginBottom:20}}>👤 Director / Owner identity</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                <Field label="Full name of director or owner" required error={errors.director_name}>
-                  <input className="input" placeholder="Amara Okonkwo"
-                    value={form.director_name} onChange={e=>set("director_name",e.target.value)}/>
-                </Field>
-                <Field label="Passport or national ID number" required hint="International passport or national ID" error={errors.national_id}>
-                  <input className="input" placeholder="A12345678"
-                    value={form.national_id} onChange={e=>set("national_id",e.target.value)}/>
-                </Field>
-              </div>
-            </div>
-
-            <div className="card animate-in-2">
-              <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>⭐ Verification tier</div>
-              <div style={{fontSize:13,color:"var(--muted)",marginBottom:20}}>Payment in USDC at approval.</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-                {TIERS.map(t=>{
-                  const sel=form.tier===t.value;
-                  return (
-                    <div key={t.value} onClick={()=>set("tier",t.value)} style={{
-                      position:"relative",padding:"18px 16px",borderRadius:14,cursor:"pointer",
-                      border:`1.5px solid ${sel?"rgba(0,212,255,0.5)":"rgba(255,255,255,0.08)"}`,
-                      background:sel?"rgba(0,212,255,0.05)":"var(--surface2)",transition:"all 0.15s",
-                    }}>
-                      {t.hot&&(<div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",
-                        fontSize:9,fontFamily:"DM Mono,monospace",padding:"2px 8px",borderRadius:99,
-                        background:"var(--accent)",color:"#05080f",fontWeight:700,whiteSpace:"nowrap" as const}}>
-                        MOST POPULAR</div>)}
-                      <div style={{fontWeight:700,fontSize:14,marginBottom:2}}>{t.name}</div>
-                      <div style={{fontSize:16,fontWeight:800,fontFamily:"DM Mono,monospace",
-                        color:sel?"var(--accent)":"var(--muted2)",marginBottom:4}}>{t.price}</div>
-                      <div style={{fontSize:11,color:"var(--muted)",marginBottom:10}}>{t.desc}</div>
-                      {t.features.map(f=>(
-                        <div key={f} style={{display:"flex",alignItems:"center",gap:6,
-                          fontSize:11,color:"var(--muted2)",marginBottom:4}}>
-                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <path d="M2 5L4 7L8 3" stroke={sel?"var(--accent)":"var(--muted)"}
-                              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          {f}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="card animate-in-3">
-              <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>📄 Verification documents</div>
-              <div style={{fontSize:13,color:"var(--muted)",marginBottom:20}}>
-                PDF only. Max 10MB each. Stored on Filecoin — only the hash goes on-chain.
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                <DropZone label="Business registration certificate" required
-                  hint="CAC, Articles of Incorporation, or equivalent — PDF only"
-                  file={files.business_reg} onDrop={f=>setFiles(p=>({...p,business_reg:f}))}/>
-                {errors.business_reg&&<div style={{fontSize:11,color:"var(--red)",marginTop:-6}}>⚠ {errors.business_reg}</div>}
-                <DropZone label="Tax clearance or TIN certificate" required
-                  hint="Current year tax clearance or VAT certificate — PDF only"
-                  file={files.tax_doc} onDrop={f=>setFiles(p=>({...p,tax_doc:f}))}/>
-                {errors.tax_doc&&<div style={{fontSize:11,color:"var(--red)",marginTop:-6}}>⚠ {errors.tax_doc}</div>}
-                <DropZone label="Bank account confirmation" required
-                  hint="Bank letter or statement header — PDF only"
-                  file={files.bank_doc} onDrop={f=>setFiles(p=>({...p,bank_doc:f}))}/>
-                {errors.bank_doc&&<div style={{fontSize:11,color:"var(--red)",marginTop:-6}}>⚠ {errors.bank_doc}</div>}
-                <DropZone label="Director ID — passport or national ID" required
-                  hint="International passport bio page or government ID — PDF only"
-                  file={files.id_doc} onDrop={f=>setFiles(p=>({...p,id_doc:f}))}/>
-                {errors.id_doc&&<div style={{fontSize:11,color:"var(--red)",marginTop:-6}}>⚠ {errors.id_doc}</div>}
-              </div>
-            </div>
-
-            <div style={{display:"flex",flexDirection:"column",gap:14}}>
-              <button onClick={submit} disabled={loading} className="btn btn-primary"
-                style={{width:"100%",padding:"15px",fontSize:15}}>
-                {loading?<><span className="spinner"/>&nbsp;Submitting...</>:"Submit for verification →"}
-              </button>
-              <button onClick={checkStatus} style={{background:"none",border:"none",cursor:"pointer",
-                color:"var(--muted)",fontSize:13,fontFamily:"Syne,sans-serif"}}>
-                Already applied? Check your application status
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step==="done" && (
-          <div className="card animate-in" style={{textAlign:"center",padding:"52px 32px"}}>
-            <div style={{width:64,height:64,borderRadius:20,margin:"0 auto 24px",display:"flex",
-              alignItems:"center",justifyContent:"center",background:"rgba(0,229,160,0.1)",
-              border:"1px solid rgba(0,229,160,0.25)"}}>
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                <path d="M5 14L11 20L23 8" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div style={{fontWeight:800,fontSize:22,marginBottom:10}}>Application submitted!</div>
-            <div style={{color:"var(--muted2)",fontSize:14,lineHeight:1.7,maxWidth:400,margin:"0 auto 28px"}}>
-              Documents uploaded. Our team reviews within 24 hours. You will receive an email once a decision is made.
-            </div>
-            <button onClick={checkStatus} className="btn btn-primary">Check my status</button>
-          </div>
-        )}
-
-        {step==="status" && appStatus && (
-          <div style={{display:"flex",flexDirection:"column",gap:16}}>
-
-            {/* Approved — congratulations */}
-            {appStatus.status==="approved" && (
-              <div className="card animate-in" style={{
-                border:"1px solid rgba(0,229,160,0.3)",
-                background:"linear-gradient(145deg,rgba(0,229,160,0.05),rgba(0,212,255,0.03))",
-                padding:0,overflow:"hidden",
-              }}>
-                <div style={{padding:"28px 28px 24px",borderBottom:"1px solid rgba(0,229,160,0.15)"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
-                    <div style={{width:52,height:52,borderRadius:14,background:"rgba(0,229,160,0.12)",
-                      border:"1px solid rgba(0,229,160,0.3)",display:"flex",alignItems:"center",
-                      justifyContent:"center",flexShrink:0}}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L21 6.5V17.5L12 22L3 17.5V6.5L12 2Z" stroke="var(--green)" strokeWidth="1.5" fill="none"/>
-                        <path d="M8 12L11 15L16 9" stroke="var(--green)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <div style={{fontWeight:800,fontSize:20,color:"var(--green)",marginBottom:2}}>
-                        Congratulations, {appStatus.companyName}!
-                      </div>
-                      <div style={{fontSize:13,color:"var(--muted2)"}}>
-                        Your business is permanently verified on the Arbitrum blockchain
-                      </div>
+            {!appsLoading && allApps && allApps.length > 0 && (
+              <div className="card animate-in" style={{padding:0,overflow:"hidden",marginBottom:20}}>
+                <div style={{
+                  padding:"16px 22px",background:"var(--surface2)",
+                  borderBottom:"1px solid var(--border)",
+                  display:"flex",alignItems:"center",justifyContent:"space-between",
+                }}>
+                  <div>
+                    <div style={{fontSize:11,color:"var(--muted)",fontFamily:"DM Mono,monospace",letterSpacing:"0.05em"}}>
+                      YOUR BUSINESSES — {allApps.length} REGISTRATION{allApps.length!==1?"S":""}
                     </div>
                   </div>
-                  <div style={{fontSize:14,color:"rgba(160,180,220,0.8)",lineHeight:1.7,
-                    padding:"14px 16px",borderRadius:10,background:"rgba(0,0,0,0.15)"}}>
-                    Your soul-bound NFT credential has been minted and <strong style={{color:"var(--text)"}}>cannot be faked, transferred, or removed</strong>. It will remain valid until <strong style={{color:"var(--text)"}}>{appStatus.expiresAt ? new Date(appStatus.expiresAt).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : "renewal"}</strong>. To make changes, you can apply for an updated credential below.
-                  </div>
-                </div>
-                <div style={{padding:"20px 28px"}}>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
-                    {[
-                      {l:"Token ID",  v:`#${appStatus.tokenId||"—"}`},
-                      {l:"Tier",      v:["","Basic","Standard","Premium"][appStatus.tier]||"—"},
-                      {l:"Network",   v:"Arbitrum"},
-                      {l:"Tax ID",    v:appStatus.taxId},
-                      {l:"Country",   v:appStatus.country},
-                      {l:"Valid until",v:appStatus.expiresAt?new Date(appStatus.expiresAt).toLocaleDateString():"—"},
-                    ].map(({l,v})=>(
-                      <div key={l} className="card-sm">
-                        <div style={{fontSize:10,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:4}}>{l.toUpperCase()}</div>
-                        <div style={{fontSize:13,fontWeight:600}}>{v}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{padding:"14px 16px",borderRadius:10,background:"rgba(0,212,255,0.05)",
-                    border:"1px solid rgba(0,212,255,0.12)",marginBottom:16}}>
-                    <div style={{fontSize:12,fontWeight:600,color:"var(--accent)",marginBottom:4}}>How buyers verify you</div>
-                    <div style={{fontSize:12,color:"var(--muted2)",lineHeight:1.65}}>
-                      Share your wallet address with any buyer. They go to VerifyChain, enter your wallet, and get a verified result in 10 seconds — straight from Arbitrum.
-                    </div>
-                    <div style={{fontFamily:"DM Mono,monospace",fontSize:11,color:"var(--muted)",
-                      marginTop:8,padding:"6px 10px",borderRadius:8,background:"rgba(0,0,0,0.2)"}}>
-                      {appStatus.wallet}
-                    </div>
-                  </div>
-                  <button onClick={()=>setStep("form")} className="btn btn-ghost" style={{fontSize:13}}>
-                    Apply for credential update →
+                  <button
+                    onClick={()=>setShowForm(v=>!v)}
+                    className="btn btn-primary"
+                    style={{fontSize:12,padding:"6px 14px"}}>
+                    {showForm ? "Close form" : "+ Register new business"}
                   </button>
                 </div>
+                <div style={{padding:"16px 22px",display:"flex",flexDirection:"column" as const,gap:14}}>
+                  {allApps.map(app => (
+                    <CredentialCard key={app.id} app={app} onReapply={()=>handleReapply(app)}/>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Rejected */}
-            {appStatus.status==="rejected" && (
-              <div className="card animate-in" style={{border:"1px solid rgba(255,77,106,0.25)"}}>
-                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",
-                  marginBottom:20,flexWrap:"wrap" as const,gap:12}}>
-                  <div>
-                    <div style={{fontWeight:800,fontSize:20,marginBottom:4}}>{appStatus.companyName}</div>
-                    <div style={{fontFamily:"DM Mono,monospace",fontSize:11,color:"var(--muted)"}}>{appStatus.wallet}</div>
+            {!appsLoading && allApps && allApps.length === 0 && !showForm && (
+              <div style={{textAlign:"center",marginBottom:20}}>
+                <button onClick={()=>setShowForm(true)} className="btn btn-primary" style={{fontSize:14,padding:"12px 24px"}}>
+                  Register your first business →
+                </button>
+              </div>
+            )}
+
+            {/* Application form */}
+            {showForm && (
+              <div style={{display:"flex",flexDirection:"column" as const,gap:20}}>
+
+                {/* Personal info — collapsible for returning wallets */}
+                <div className="card animate-in-1">
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:personalCollapsed?0:20}}>
+                    <div style={{fontWeight:700,fontSize:16}}>👤 Director / Owner identity</div>
+                    {allApps && allApps.length > 0 && (
+                      <button
+                        onClick={()=>setPersonalCollapsed(v=>!v)}
+                        className="btn btn-ghost"
+                        style={{fontSize:12,padding:"5px 12px"}}>
+                        {personalCollapsed ? "Edit personal info" : "Same as previous ▲"}
+                      </button>
+                    )}
                   </div>
-                  <span className="badge badge-rejected">REJECTED</span>
-                </div>
-
-                {appStatus.rejectionReason && (
-                  <div style={{padding:"14px 16px",borderRadius:10,marginBottom:20,
-                    background:"rgba(255,77,106,0.06)",border:"1px solid rgba(255,77,106,0.15)"}}>
-                    <div style={{fontSize:11,color:"var(--red)",fontFamily:"DM Mono,monospace",
-                      marginBottom:6,fontWeight:600,letterSpacing:"0.04em"}}>REASON FOR REJECTION</div>
-                    <div style={{fontSize:14,color:"var(--text)",lineHeight:1.6}}>{appStatus.rejectionReason}</div>
-                  </div>
-                )}
-
-                <StatusTimeline status={appStatus}/>
-
-                {appStatus.canReapply && (
-                  <div style={{marginTop:20}}>
-                    <div style={{padding:"12px 16px",borderRadius:10,marginBottom:14,
-                      background:"rgba(255,181,71,0.06)",border:"1px solid rgba(255,181,71,0.15)"}}>
-                      <div style={{fontSize:13,color:"var(--amber)",lineHeight:1.65}}>
-                        You have <strong>{appStatus.attemptsLeft} attempt{appStatus.attemptsLeft!==1?"s":""} remaining</strong>.
-                        Please address the rejection reason above before reapplying.
-                      </div>
+                  {personalCollapsed ? (
+                    <div style={{
+                      padding:"12px 14px",borderRadius:10,marginTop:12,
+                      background:"rgba(0,229,160,0.04)",border:"1px solid rgba(0,229,160,0.15)",
+                      fontSize:13,color:"var(--muted2)",
+                    }}>
+                      Using director info from previous application:{" "}
+                      <strong style={{color:"var(--text)"}}>{form.director_name || "—"}</strong>
+                      {" "}· ID: <strong style={{color:"var(--text)"}}>{form.national_id || "—"}</strong>
                     </div>
-                    <button onClick={()=>setStep("form")} className="btn btn-primary" style={{fontSize:13}}>
-                      Reapply now →
-                    </button>
-                  </div>
-                )}
+                  ) : (
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                      <Field label="Full name of director or owner" required error={errors.director_name}>
+                        <input className="input" placeholder="Amara Okonkwo"
+                          value={form.director_name} onChange={e=>set("director_name",e.target.value)}/>
+                      </Field>
+                      <Field label="Passport or national ID number" required hint="International passport or national ID" error={errors.national_id}>
+                        <input className="input" placeholder="A12345678"
+                          value={form.national_id} onChange={e=>set("national_id",e.target.value)}/>
+                      </Field>
+                    </div>
+                  )}
+                </div>
 
-                {!appStatus.canReapply && (
-                  <div style={{marginTop:20,padding:"14px 16px",borderRadius:10,
-                    background:"rgba(160,180,220,0.04)",border:"1px solid rgba(160,180,220,0.1)"}}>
-                    <div style={{fontSize:13,color:"var(--muted2)",lineHeight:1.65}}>
-                      You have used all 3 application attempts. Please contact{" "}
-                      <a href="mailto:support@verifychain.io" style={{color:"var(--accent)"}}>
-                        support@verifychain.io
-                      </a>{" "}for assistance.
+                <div className="card animate-in-1">
+                  <div style={{fontWeight:700,fontSize:16,marginBottom:20}}>🏢 Business information</div>
+                  <div style={{display:"flex",flexDirection:"column" as const,gap:16}}>
+                    <Field label="Legal company name" required error={errors.company_name}>
+                      <input className="input" placeholder="Acme Global Supplies Ltd"
+                        value={form.company_name} onChange={e=>set("company_name",e.target.value)}/>
+                    </Field>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                      <Field label="Company registration number" required error={errors.registration_number}>
+                        <input className="input" placeholder="RC-1234567"
+                          value={form.registration_number} onChange={e=>set("registration_number",e.target.value)}/>
+                      </Field>
+                      <Field label="Tax identification number" required hint="VAT, EIN, TIN or equivalent" error={errors.tax_id}>
+                        <input className="input" placeholder="1234567890"
+                          value={form.tax_id} onChange={e=>set("tax_id",e.target.value)}/>
+                      </Field>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                      <Field label="Country of registration" required error={errors.country_of_registration}>
+                        <select className="input" value={form.country_of_registration}
+                          onChange={e=>set("country_of_registration",e.target.value)}
+                          style={{appearance:"none",cursor:"pointer"}}>
+                          <option value="">Select country...</option>
+                          {COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </Field>
+                      <Field label="Country of operation" required error={errors.country_of_operation}>
+                        <select className="input" value={form.country_of_operation}
+                          onChange={e=>set("country_of_operation",e.target.value)}
+                          style={{appearance:"none",cursor:"pointer"}}>
+                          <option value="">Select country...</option>
+                          {COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </Field>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                      <Field label="Business email" required error={errors.email}>
+                        <input className="input" type="email" placeholder="ops@company.com"
+                          value={form.email} onChange={e=>set("email",e.target.value)}/>
+                      </Field>
+                      <Field label="Phone number" required hint="+1 555 000 0000" error={errors.phone}>
+                        <input className="input" placeholder="+234 801 234 5678"
+                          value={form.phone} onChange={e=>set("phone",e.target.value)}/>
+                      </Field>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                      <Field label="Website" hint="Optional">
+                        <input className="input" placeholder="https://company.com"
+                          value={form.website} onChange={e=>set("website",e.target.value)}/>
+                      </Field>
+                      <Field label="LinkedIn company page" hint="Optional">
+                        <input className="input" placeholder="https://linkedin.com/company/..."
+                          value={form.linkedin} onChange={e=>set("linkedin",e.target.value)}/>
+                      </Field>
                     </div>
                   </div>
-                )}
+                </div>
+
+                {/* Pricing plans */}
+                <div className="card animate-in-2">
+                  <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>⭐ Verification plan</div>
+                  <div style={{fontSize:13,color:"var(--muted)",marginBottom:20}}>
+                    Choose your validity period. Payment in USDC at approval.
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
+                    {PLANS.map(plan => {
+                      const sel = selectedPlan.value === plan.value;
+                      return (
+                        <div key={plan.value} onClick={()=>setSelectedPlan(plan)} style={{
+                          position:"relative",padding:"18px 16px",borderRadius:14,cursor:"pointer",
+                          border:`1.5px solid ${sel?"rgba(0,212,255,0.5)":"rgba(255,255,255,0.08)"}`,
+                          background:sel?"rgba(0,212,255,0.05)":"var(--surface2)",transition:"all 0.15s",
+                        }}>
+                          {plan.hot && (
+                            <div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",
+                              fontSize:9,fontFamily:"DM Mono,monospace",padding:"2px 8px",borderRadius:99,
+                              background:"var(--accent)",color:"#05080f",fontWeight:700,whiteSpace:"nowrap" as const}}>
+                              BEST VALUE
+                            </div>
+                          )}
+                          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}>
+                            <div style={{fontWeight:700,fontSize:14}}>{plan.label}</div>
+                            {plan.savings && (
+                              <div style={{
+                                fontSize:9,fontFamily:"DM Mono,monospace",padding:"2px 6px",borderRadius:4,
+                                background:"rgba(0,229,160,0.1)",color:"var(--green)",border:"1px solid rgba(0,229,160,0.2)",
+                              }}>{plan.savings}</div>
+                            )}
+                          </div>
+                          <div style={{fontWeight:800,fontSize:20,fontFamily:"DM Mono,monospace",
+                            color:sel?"var(--accent)":"var(--muted2)",marginBottom:2}}>
+                            {plan.price}
+                            <span style={{fontSize:12,fontWeight:400,color:"var(--muted)"}}>{plan.period}</span>
+                          </div>
+                          <div style={{fontSize:11,color:"var(--muted)",marginBottom:10}}>{plan.desc}</div>
+                          {plan.features.map(f=>(
+                            <div key={f} style={{display:"flex",alignItems:"center",gap:6,
+                              fontSize:11,color:"var(--muted2)",marginBottom:3}}>
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <path d="M2 5L4 7L8 3" stroke={sel?"var(--accent)":"var(--muted)"}
+                                  strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                              {f}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Documents */}
+                <div className="card animate-in-3">
+                  <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>📄 Verification documents</div>
+                  <div style={{fontSize:13,color:"var(--muted)",marginBottom:20}}>
+                    PDF only. Max 10MB each. Stored on Filecoin — only the hash goes on-chain.
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
+                    <DropZone label="Business registration certificate" required
+                      hint="CAC, Articles of Incorporation, or equivalent — PDF only"
+                      file={files.business_reg} onDrop={f=>setFiles(p=>({...p,business_reg:f}))}
+                      error={errors.business_reg}/>
+                    <DropZone label="Tax clearance or TIN certificate" required
+                      hint="Current year tax clearance or VAT certificate — PDF only"
+                      file={files.tax_doc} onDrop={f=>setFiles(p=>({...p,tax_doc:f}))}
+                      error={errors.tax_doc}/>
+                    <DropZone label="Bank account confirmation" required
+                      hint="Bank letter or statement header — PDF only"
+                      file={files.bank_doc} onDrop={f=>setFiles(p=>({...p,bank_doc:f}))}
+                      error={errors.bank_doc}/>
+                    <DropZone label="Director ID — passport or national ID" required
+                      hint="International passport bio page or government ID — PDF only"
+                      file={files.id_doc} onDrop={f=>setFiles(p=>({...p,id_doc:f}))}
+                      error={errors.id_doc}/>
+                  </div>
+                </div>
+
+                <button onClick={submit} disabled={loading} className="btn btn-primary"
+                  style={{width:"100%",padding:"15px",fontSize:15}}>
+                  {loading ? <><span className="spinner"/>&nbsp;Submitting…</> : "Submit for verification →"}
+                </button>
+
               </div>
             )}
-
-            {/* Pending */}
-            {appStatus.status==="pending" && (
-              <div className="card animate-in">
-                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",
-                  marginBottom:20,flexWrap:"wrap" as const,gap:12}}>
-                  <div>
-                    <div style={{fontWeight:800,fontSize:20,marginBottom:4}}>{appStatus.companyName}</div>
-                    <div style={{fontFamily:"DM Mono,monospace",fontSize:11,color:"var(--muted)"}}>{appStatus.wallet}</div>
-                  </div>
-                  <span className="badge badge-pending">UNDER REVIEW</span>
-                </div>
-                <StatusTimeline status={appStatus}/>
-                <div style={{marginTop:20,padding:"14px 16px",borderRadius:10,
-                  background:"rgba(255,181,71,0.05)",border:"1px solid rgba(255,181,71,0.12)"}}>
-                  <div style={{fontSize:13,color:"var(--amber)",lineHeight:1.65}}>
-                    Your application is being reviewed. You will receive an email within 24 hours. Attempt {appStatus.attemptCount} of 3.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <button onClick={()=>setStep("form")} style={{background:"none",border:"none",
-              cursor:"pointer",color:"var(--muted)",fontSize:13,fontFamily:"Syne,sans-serif"}}>
-              ← Back to application form
-            </button>
-          </div>
+          </>
         )}
       </div>
+
+      <style>{`
+        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .animate-in{animation:fadeUp .45s ease both}
+        .animate-in-1{animation:fadeUp .45s ease .06s both}
+        .animate-in-2{animation:fadeUp .45s ease .12s both}
+        .animate-in-3{animation:fadeUp .45s ease .18s both}
+        *{box-sizing:border-box}
+      `}</style>
     </div>
   );
 }

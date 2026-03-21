@@ -42,19 +42,20 @@ class SupplierTier(int, enum.Enum):
 class Supplier(Base):
     __tablename__ = "suppliers"
 
-    id:           Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    wallet:       Mapped[str]           = mapped_column(String(42), unique=True, index=True)
-    company_name: Mapped[str]           = mapped_column(String(255))
-    tax_id:       Mapped[str]           = mapped_column(String(100), unique=True, index=True)
-    country:      Mapped[str]           = mapped_column(String(100))
-    email:        Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    status:       Mapped[str]           = mapped_column(String(20), default=ApplicationStatus.PENDING)
-    tier:         Mapped[int]           = mapped_column(Integer, default=1)
-    token_id:     Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    docs_ipfs:    Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    created_at:   Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
-    approved_at:  Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    expires_at:   Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    id:             Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    wallet:         Mapped[str]           = mapped_column(String(42), index=True)          # no unique — multiple businesses per wallet
+    company_name:   Mapped[str]           = mapped_column(String(255))
+    tax_id:         Mapped[str]           = mapped_column(String(100), unique=True, index=True)
+    country:        Mapped[str]           = mapped_column(String(100))
+    email:          Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    status:         Mapped[str]           = mapped_column(String(20), default=ApplicationStatus.PENDING)
+    tier:           Mapped[int]           = mapped_column(Integer, default=1)
+    validity_days:  Mapped[Optional[int]] = mapped_column(Integer, nullable=True)          # from pricing plan
+    token_id:       Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    docs_ipfs:      Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_at:     Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+    approved_at:    Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    expires_at:     Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     documents:    Mapped[List["Document"]]   = relationship("Document", back_populates="supplier")
     queries:      Mapped[List["VerifyQuery"]] = relationship("VerifyQuery", back_populates="supplier")
@@ -115,6 +116,19 @@ class Payment(Base):
     created_at: Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class User(Base):
+    """Email-authenticated user account (optional wallet link)."""
+    __tablename__ = "users"
+
+    id:            Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email:         Mapped[str]           = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str]           = mapped_column(String(128))
+    salt:          Mapped[str]           = mapped_column(String(32))
+    wallet:        Mapped[Optional[str]] = mapped_column(String(42), nullable=True, index=True)
+    session_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    created_at:    Mapped[datetime]      = mapped_column(DateTime, default=datetime.utcnow)
+
+
 # ─────────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────────
@@ -122,6 +136,13 @@ class Payment(Base):
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add validity_days column if it doesn't exist (SQLite migration)
+        try:
+            await conn.execute(__import__("sqlalchemy").text(
+                "ALTER TABLE suppliers ADD COLUMN validity_days INTEGER"
+            ))
+        except Exception:
+            pass  # Column already exists
 
 
 async def get_db():

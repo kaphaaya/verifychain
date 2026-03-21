@@ -157,15 +157,16 @@ def _send_tx(fn):
     nonce   = w3.eth.get_transaction_count(account.address)
     latest       = w3.eth.get_block('latest')
     base_fee     = latest['baseFeePerGas']
-    max_priority = w3.to_wei(1, 'gwei')
-    max_fee      = base_fee * 2 + max_priority
+    max_priority = w3.to_wei(2, 'gwei')
+    max_fee      = base_fee * 3 + max_priority
     tx = fn.build_transaction({
         'from':                account.address,
         'nonce':               nonce,
-        'gas':                 500_000,
+        'gas':                 800_000,
         'maxFeePerGas':        max_fee,
         'maxPriorityFeePerGas': max_priority,
         'chainId':             421614,
+        'type':                2,
     })
     signed  = w3.eth.account.sign_transaction(tx, private_key=ADMIN_PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)

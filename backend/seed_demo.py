@@ -9,11 +9,10 @@ To make them verifiable on the blockchain, log in to /admin and click
 "Approve & mint" for each one (or re-run this script after configuring
 ADMIN_PRIVATE_KEY and CONTRACT_ADDRESS in .env).
 """
-import asyncio
+import asyncio, os, sys
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import select
-import os, sys
 
 # Allow running from any directory
 sys.path.insert(0, os.path.dirname(__file__))
@@ -88,10 +87,17 @@ DEMO_SUPPLIERS = [
 ]
 
 
-async def seed():
+async def seed(try_mint: bool = False):
     engine = create_async_engine(DATABASE_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add validity_days if missing
+        try:
+            await conn.execute(__import__("sqlalchemy").text(
+                "ALTER TABLE suppliers ADD COLUMN validity_days INTEGER"
+            ))
+        except Exception:
+            pass
 
     Session = async_sessionmaker(engine, expire_on_commit=False)
     now = datetime.utcnow()
@@ -99,70 +105,99 @@ async def seed():
     async with Session() as db:
         inserted = 0
         skipped  = 0
+        minted   = 0
 
         for data in DEMO_SUPPLIERS:
-            existing = await db.execute(
-                select(Supplier).where(Supplier.wallet.ilike(data["wallet"]))
-            )
-            if existing.scalar_one_or_none():
-                print(f"  skip  {data['company_name']} (already exists)")
-                skipped += 1
-                continue
-
-            # Also skip if tax_id already used
+            # Skip if tax_id already used
             existing_tax = await db.execute(
                 select(Supplier).where(Supplier.tax_id == data["tax_id"])
             )
-            if existing_tax.scalar_one_or_none():
-                print(f"  skip  {data['company_name']} (tax ID collision)")
+            existing_record = existing_tax.scalar_one_or_none()
+
+            if existing_record:
+                print(f"  skip  {data['company_name']} (tax ID already in DB)")
                 skipped += 1
-                continue
+                supplier = existing_record
+            else:
+                supplier = Supplier(
+                    wallet=data["wallet"],
+                    company_name=data["company_name"],
+                    tax_id=data["tax_id"],
+                    country=data["country"],
+                    email=data["email"],
+                    tier=data["tier"],
+                    validity_days=365,
+                    status="approved",
+                    token_id=data["token_id"],
+                    docs_ipfs=data["docs_ipfs"],
+                    approved_at=now,
+                    expires_at=now + timedelta(days=365),
+                )
+                try:
+                    supplier.attempt_count = 1
+                    supplier.rejection_reason = None
+                except Exception:
+                    pass
 
-            supplier = Supplier(
-                wallet=data["wallet"],
-                company_name=data["company_name"],
-                tax_id=data["tax_id"],
-                country=data["country"],
-                email=data["email"],
-                tier=data["tier"],
-                status="approved",
-                token_id=data["token_id"],
-                docs_ipfs=data["docs_ipfs"],
-                approved_at=now,
-                expires_at=now + timedelta(days=365),
-            )
-            try:
-                supplier.attempt_count = 1
-                supplier.rejection_reason = None
-            except Exception:
-                pass
+                db.add(supplier)
+                await db.flush()  # get supplier.id
 
-            db.add(supplier)
-            await db.flush()  # get supplier.id
+                for doc in data["documents"]:
+                    db.add(Document(
+                        supplier_id=supplier.id,
+                        doc_type=doc["doc_type"],
+                        filename=doc["filename"],
+                        ipfs_cid=doc["ipfs_cid"],
+                        uploaded_at=now,
+                    ))
 
-            for doc in data["documents"]:
-                db.add(Document(
-                    supplier_id=supplier.id,
-                    doc_type=doc["doc_type"],
-                    filename=doc["filename"],
-                    ipfs_cid=doc["ipfs_cid"],
-                    uploaded_at=now,
-                ))
+                await db.commit()
+                inserted += 1
+                print(f"  added {data['company_name']} ({data['country']}) — wallet {data['wallet'][:10]}...")
 
-            await db.commit()
-            inserted += 1
-            print(f"  added {data['company_name']} ({data['country']}) — wallet {data['wallet'][:10]}...")
+            # Try on-chain mint if requested and ADMIN_PRIVATE_KEY is set
+            if try_mint:
+                admin_key = os.getenv("ADMIN_PRIVATE_KEY", "")
+                contract_addr = os.getenv("CONTRACT_ADDRESS", "")
+                if not admin_key or not contract_addr:
+                    print(f"  [mint] Skipping — ADMIN_PRIVATE_KEY or CONTRACT_ADDRESS not set")
+                    continue
+                try:
+                    from services.blockchain import verify_supplier_onchain, mint_credential
+                    existing_chain = verify_supplier_onchain(data["wallet"])
+                    if existing_chain.get("isValid"):
+                        print(f"  [mint] {data['company_name']} already on-chain ✓")
+                        minted += 1
+                        continue
+                    docs_hash = supplier.docs_ipfs or "ipfs://none"
+                    if docs_hash.startswith("local:"):
+                        docs_hash = "ipfs://local"
+                    tx_hash, status = mint_credential(
+                        data["wallet"], data["company_name"], data["tax_id"],
+                        data["country"], docs_hash, data["tier"],
+                    )
+                    if status:
+                        supplier.token_id = supplier.token_id or (100 + inserted)
+                        await db.commit()
+                        print(f"  [mint] {data['company_name']} minted ✓ tx={tx_hash[:16]}...")
+                        minted += 1
+                    else:
+                        print(f"  [mint] {data['company_name']} mint reverted — check contract")
+                except Exception as e:
+                    print(f"  [mint] {data['company_name']} failed: {e}")
 
-        print(f"\nDone. {inserted} inserted, {skipped} skipped.")
+        print(f"\nDone. {inserted} inserted, {skipped} skipped, {minted} minted.")
         print("\nDemo wallet addresses for the buyer page:")
         for d in DEMO_SUPPLIERS:
             print(f"  {d['wallet']}  —  {d['company_name']} ({d['country']})")
-        print("\nNote: To make these verifiable on Arbitrum, go to /admin and")
-        print("click 'Approve & mint' for each supplier. The DB already shows")
-        print("them as approved but blockchain verification requires minting.")
+        if not try_mint:
+            print("\nTip: Run with --mint to attempt on-chain minting:")
+            print("     python seed_demo.py --mint")
 
     await engine.dispose()
 
 
 if __name__ == "__main__":
-    asyncio.run(seed())
+    import sys
+    mint = "--mint" in sys.argv
+    asyncio.run(seed(try_mint=mint))
