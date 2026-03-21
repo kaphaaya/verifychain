@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { config } from "../lib/web3";
 import "@rainbow-me/rainbowkit/styles.css";
+import DemoBanner from "../components/DemoBanner";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <WagmiProvider config={config}>
           <QueryClientProvider client={queryClient}>
             <RainbowKitProvider>
+              <DemoBanner/>
               {children}
               <Toaster
                 position="top-right"

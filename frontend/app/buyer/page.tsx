@@ -150,6 +150,14 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
   );
 }
 
+// Demo wallets — pre-verified suppliers seeded for judges
+const DEMO_WALLETS = [
+  { wallet:"0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2", company:"Amara Global Trading", flag:"🇳🇬" },
+  { wallet:"0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db", company:"Ashanti Exports",       flag:"🇬🇭" },
+  { wallet:"0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaA", company:"Nairobi Logistics",    flag:"🇰🇪" },
+  { wallet:"0x617F2E2fD72FD9D5503197092aC168c91465E7f3", company:"Dubai Trade Partners",  flag:"🇦🇪" },
+];
+
 type SearchMode = "wallet" | "taxid" | "company";
 
 export default function BuyerPage() {
@@ -303,6 +311,42 @@ export default function BuyerPage() {
               ? "Matches suppliers by name from our registry, then verifies on-chain"
               : "Query is read directly from Arbitrum — results are cryptographically verified"}
           </div>
+
+          {/* Demo wallet chips */}
+          {searchBy==="wallet" && (
+            <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid var(--border)"}}>
+              <div style={{fontSize:10,color:"var(--muted)",fontFamily:"DM Mono,monospace",
+                letterSpacing:"0.06em",marginBottom:8}}>TRY A DEMO WALLET</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap" as const}}>
+                {DEMO_WALLETS.map(d=>(
+                  <button key={d.wallet} onClick={()=>{
+                    setQuery(d.wallet);
+                    setTarget(d.wallet as `0x${string}`);
+                    setTaxIdTarget(null);
+                    setCompanyResults(null);
+                  }} style={{
+                    display:"flex",alignItems:"center",gap:6,
+                    padding:"6px 12px",borderRadius:99,cursor:"pointer",
+                    background:"rgba(0,212,255,0.05)",
+                    border:"1px solid rgba(0,212,255,0.15)",
+                    color:"var(--accent)",fontSize:12,fontWeight:600,
+                    fontFamily:"Syne,sans-serif",transition:"all 0.15s",
+                  }}
+                  onMouseEnter={e=>{
+                    (e.currentTarget as HTMLElement).style.background="rgba(0,212,255,0.1)";
+                    (e.currentTarget as HTMLElement).style.borderColor="rgba(0,212,255,0.3)";
+                  }}
+                  onMouseLeave={e=>{
+                    (e.currentTarget as HTMLElement).style.background="rgba(0,212,255,0.05)";
+                    (e.currentTarget as HTMLElement).style.borderColor="rgba(0,212,255,0.15)";
+                  }}>
+                    <span>{d.flag}</span>
+                    <span>{d.company}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Loading */}
