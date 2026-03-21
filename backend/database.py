@@ -134,15 +134,21 @@ class User(Base):
 # ─────────────────────────────────────────────────────────────────
 
 async def init_db():
+    from sqlalchemy import text
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Add validity_days column if it doesn't exist (SQLite migration)
-        try:
-            await conn.execute(__import__("sqlalchemy").text(
-                "ALTER TABLE suppliers ADD COLUMN validity_days INTEGER"
-            ))
-        except Exception:
-            pass  # Column already exists
+        # Idempotent column migrations for SQLite
+        _migrations = [
+            "ALTER TABLE suppliers ADD COLUMN validity_days INTEGER",
+            "ALTER TABLE suppliers ADD COLUMN token_id INTEGER",
+            "ALTER TABLE suppliers ADD COLUMN approved_at DATETIME",
+            "ALTER TABLE suppliers ADD COLUMN expires_at DATETIME",
+        ]
+        for sql in _migrations:
+            try:
+                await conn.execute(text(sql))
+            except Exception:
+                pass  # Column already exists
 
 
 async def get_db():
