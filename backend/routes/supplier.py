@@ -139,7 +139,7 @@ async def apply(
         if id_doc:
             files_to_upload.append(id_doc)
         files_map = await upload_multiple(files_to_upload)
-        combined_cid = list(files_map.values())[0]
+        combined_cid = list(files_map.values())[0] if files_map else "local:unknown"
 
         existing_record.company_name  = company_name
         existing_record.country       = country

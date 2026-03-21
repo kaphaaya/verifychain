@@ -30,9 +30,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+import os as _os
+_CORS_ORIGINS = [
+    "https://verifychain-zeta.vercel.app",
+    "https://verifychain.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
+# Allow extra origins via env var (comma-separated)
+_extra = _os.getenv("CORS_ORIGINS", "")
+if _extra:
+    _CORS_ORIGINS += [o.strip() for o in _extra.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # tighten in production
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
