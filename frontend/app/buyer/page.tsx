@@ -7,6 +7,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { CONTRACT_ABI, CONTRACT_ADDRESS, TIER_NAMES } from "../../lib/web3";
+import CredentialCard from "../../components/CredentialCard";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://verifychain-zeta.vercel.app";
@@ -570,10 +571,43 @@ export default function BuyerPage() {
 
         {/* Wallet / Tax-ID results */}
         {!walletLoading && walletData && target && (
-          <ResultCard data={{isValid:walletData[0],cred:walletData[1]}} wallet={target} dbSupplier={dbSupplier}/>
+          <>
+            <ResultCard data={{isValid:walletData[0],cred:walletData[1]}} wallet={target} dbSupplier={dbSupplier}/>
+            {walletData[0] && walletData[1] && (
+              <CredentialCard data={{
+                companyName: walletData[1].companyName,
+                country: walletData[1].country,
+                tier: Number(walletData[1].tier),
+                tokenId: dbSupplier?.tokenId,
+                expiresAt: Number(walletData[1].expiresAt) > 0
+                  ? new Date(Number(walletData[1].expiresAt)*1000).toISOString()
+                  : null,
+                issuedAt: Number(walletData[1].issuedAt) > 0
+                  ? new Date(Number(walletData[1].issuedAt)*1000).toISOString()
+                  : null,
+                wallet: target,
+              }}/>
+            )}
+          </>
         )}
         {!taxidLoading && taxidData && taxIdTarget && (
-          <ResultCard data={{isValid:taxidData[0],cred:taxidData[1]}} wallet={taxidWallet} dbSupplier={dbSupplier}/>
+          <>
+            <ResultCard data={{isValid:taxidData[0],cred:taxidData[1]}} wallet={taxidWallet} dbSupplier={dbSupplier}/>
+            {taxidData[0] && taxidData[1] && (
+              <CredentialCard data={{
+                companyName: taxidData[1].companyName,
+                country: taxidData[1].country,
+                tier: Number(taxidData[1].tier),
+                expiresAt: Number(taxidData[1].expiresAt) > 0
+                  ? new Date(Number(taxidData[1].expiresAt)*1000).toISOString()
+                  : null,
+                issuedAt: Number(taxidData[1].issuedAt) > 0
+                  ? new Date(Number(taxidData[1].issuedAt)*1000).toISOString()
+                  : null,
+                wallet: taxidWallet,
+              }}/>
+            )}
+          </>
         )}
 
         {/* API Access */}

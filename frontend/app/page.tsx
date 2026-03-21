@@ -191,13 +191,13 @@ function ContactSection() {
             {
               icon:<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="4" width="16" height="11" rx="2" stroke="var(--accent)" strokeWidth="1.4"/><path d="M1 6.5L9 11L17 6.5" stroke="var(--accent)" strokeWidth="1.4" strokeLinecap="round"/></svg>,
               label:"General inquiries",
-              email:"support@verifychain.io",
+              email:"aziz.kafayat@gmail.com",
               desc:"Help with applications, buyer verification, or technical issues.",
             },
             {
               icon:<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="4" width="16" height="11" rx="2" stroke="var(--purple)" strokeWidth="1.4"/><path d="M1 6.5L9 11L17 6.5" stroke="var(--purple)" strokeWidth="1.4" strokeLinecap="round"/></svg>,
               label:"Partnerships & investment",
-              email:"invest@verifychain.io",
+              email:"aziz.kafayat@gmail.com",
               desc:"Enterprise pilots, strategic partnerships, and investor inquiries.",
             },
           ].map(c=>(

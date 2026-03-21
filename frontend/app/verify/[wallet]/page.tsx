@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
+import CredentialCard from "../../../components/CredentialCard";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://verifychain-zeta.vercel.app";
@@ -219,6 +220,22 @@ export default function VerifyWalletPage() {
                 </div>
               </div>
             </div>
+          );
+        })()}
+
+        {/* NFT Credential Card for on-chain verified suppliers */}
+        {result.status === "onchain" && (() => {
+          const c = result.cred;
+          return (
+            <CredentialCard data={{
+              companyName: c.companyName,
+              country: c.country,
+              tier: Number(c.tier || 0),
+              tokenId: result.tokenId,
+              expiresAt: c.expiresAt || null,
+              issuedAt: c.issuedAt || null,
+              wallet: wallet as string,
+            }}/>
           );
         })()}
 

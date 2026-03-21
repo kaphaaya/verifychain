@@ -6,6 +6,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import NFTCredentialCard from "../../components/CredentialCard";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://verifychain-zeta.vercel.app";
@@ -188,7 +189,7 @@ function CredentialCard({ app, onReapply }: { app: any; onReapply: () => void })
           </div>
         ))}
       </div>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap" as const}}>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap" as const,marginBottom:16}}>
         <button className="btn btn-ghost" style={{fontSize:12,padding:"6px 12px"}} onClick={()=>{
           navigator.clipboard.writeText(`${APP_URL}/verify/${app.wallet}`);
           toast.success("Share link copied!");
@@ -199,6 +200,17 @@ function CredentialCard({ app, onReapply }: { app: any; onReapply: () => void })
           className="btn btn-ghost" style={{fontSize:12,padding:"6px 12px"}}>
           View on Arbiscan →
         </a>
+      </div>
+      {/* NFT Credential Card */}
+      <div style={{margin:"8px -6px 0"}}>
+        <NFTCredentialCard data={{
+          companyName: app.companyName,
+          country: app.country,
+          tier: app.tier,
+          tokenId: app.tokenId,
+          expiresAt: app.expiresAt,
+          wallet: app.wallet,
+        }}/>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ def send_rejection_email(to_email: str, company_name: str, reason: str, attempts
         return resend.Emails.send({
             "from": FROM_EMAIL,
             "to": [to_email],
+            "cc": ["aziz.kafayat@gmail.com"],
             "subject": f"Your VerifyChain application was not approved — {company_name}",
             "html": f"""
 <!DOCTYPE html>
@@ -42,7 +43,7 @@ def send_rejection_email(to_email: str, company_name: str, reason: str, attempts
         <div style="color:#f0f4ff;font-size:14px;line-height:1.6;">{reason}</div>
       </div>
 
-      {"<div style='background:rgba(255,181,71,0.06);border:1px solid rgba(255,181,71,0.15);border-radius:10px;padding:14px 18px;margin-bottom:24px;'><div style='color:#ffb547;font-size:13px;line-height:1.6;'><strong>You can reapply.</strong> You have <strong>" + str(attempts_left) + " attempt" + ("s" if attempts_left != 1 else "") + "</strong> remaining. Please address the reason above before reapplying.</div></div>" if attempts_left > 0 else "<div style='background:rgba(160,180,220,0.04);border:1px solid rgba(160,180,220,0.1);border-radius:10px;padding:14px 18px;margin-bottom:24px;'><div style='color:rgba(160,180,220,0.7);font-size:13px;line-height:1.6;'>You have used all 3 application attempts. Please contact <a href='mailto:support@verifychain.io' style='color:#00d4ff;'>support@verifychain.io</a> for assistance.</div></div>"}
+      {"<div style='background:rgba(255,181,71,0.06);border:1px solid rgba(255,181,71,0.15);border-radius:10px;padding:14px 18px;margin-bottom:24px;'><div style='color:#ffb547;font-size:13px;line-height:1.6;'><strong>You can reapply.</strong> You have <strong>" + str(attempts_left) + " attempt" + ("s" if attempts_left != 1 else "") + "</strong> remaining. Please address the reason above before reapplying.</div></div>" if attempts_left > 0 else "<div style='background:rgba(160,180,220,0.04);border:1px solid rgba(160,180,220,0.1);border-radius:10px;padding:14px 18px;margin-bottom:24px;'><div style='color:rgba(160,180,220,0.7);font-size:13px;line-height:1.6;'>You have used all 3 application attempts. Please contact <a href='mailto:aziz.kafayat@gmail.com' style='color:#00d4ff;'>aziz.kafayat@gmail.com</a> for assistance.</div></div>"}
 
       <a href="https://verifychain.io/supplier" style="display:inline-block;background:linear-gradient(135deg,#00d4ff,#0066ff);color:#05080f;font-size:14px;font-weight:700;padding:12px 24px;border-radius:10px;text-decoration:none;">
         {"Reapply now →" if attempts_left > 0 else "Contact support →"}
@@ -71,6 +72,7 @@ def send_approval_email(to_email: str, company_name: str, token_id: int, tier: i
         return resend.Emails.send({
             "from": FROM_EMAIL,
             "to": [to_email],
+            "cc": ["aziz.kafayat@gmail.com"],
             "subject": f"🎉 {company_name} is now verified on VerifyChain",
             "html": f"""
 <!DOCTYPE html>
@@ -160,7 +162,7 @@ def send_contact_email(name: str, email: str, message: str):
     try:
         return resend.Emails.send({
             "from": FROM_EMAIL,
-            "to": ["support@verifychain.io"],
+            "to": ["aziz.kafayat@gmail.com"],
             "reply_to": email,
             "subject": f"[VerifyChain Contact] Message from {name}",
             "html": f"""
