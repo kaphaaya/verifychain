@@ -23,7 +23,7 @@ def require_admin(x_admin_secret: str = Header(...)):
 
 @router.get("/overview", dependencies=[Depends(require_admin)])
 async def analytics_overview(db: AsyncSession = Depends(get_db)):
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Total verified suppliers
@@ -71,14 +71,14 @@ async def analytics_overview(db: AsyncSession = Depends(get_db)):
         "totalQueries":    total_queries,
         "onchainTotal":    onchain_total,
         "monthlyRevenue":  round(monthly_revenue, 2),
-        "asOf":            now.isoformat(),
+        "asOf":            now.replace(tzinfo=timezone.utc).isoformat(),
     }
 
 
 @router.get("/queries-by-day", dependencies=[Depends(require_admin)])
 async def queries_by_day(db: AsyncSession = Depends(get_db)):
     """Returns query counts for the last 7 days."""
-    now   = datetime.now(timezone.utc)
+    now   = datetime.utcnow()
     days  = []
     for i in range(6, -1, -1):
         day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
