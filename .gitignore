@@ -1,1 +1,11 @@
 node_modules/
+.next/
+__pycache__/
+*.pyc
+.env
+.env.local
+verifychain.db
+uploads/
+artifacts/
+cache/
+.DS_Store
