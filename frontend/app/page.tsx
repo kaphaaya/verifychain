@@ -2,6 +2,10 @@
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useEffect, useState } from "react";
+import axios from "axios";
+import toast from "react-hot-toast";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 function Nav() {
   return (
@@ -142,6 +146,131 @@ function FAQ() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Contact section ─────────────────────────────────────────────
+function ContactSection() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const submit = async () => {
+    if (!name.trim() || !email.trim() || !message.trim())
+      return toast.error("Please fill in all fields");
+    setSending(true);
+    try {
+      await axios.post(`${API}/api/contact`, { name, email, message });
+      setSent(true);
+      toast.success("Message sent!");
+    } catch {
+      toast.error("Failed to send — try emailing us directly");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position:"relative",zIndex:10,
+      borderTop:"1px solid var(--border)",
+    }}>
+      <Section>
+        <SectionLabel>Get in touch</SectionLabel>
+        <SectionTitle>Let's talk<br/><span style={{color:"var(--accent)"}}>supply chain trust.</span></SectionTitle>
+        <p style={{fontSize:15,color:"var(--muted2)",lineHeight:1.75,maxWidth:480,marginBottom:52}}>
+          Whether you're a buyer, a supplier, or an investor — we'd love to hear from you.
+        </p>
+
+        {/* Email cards */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,marginBottom:48}}>
+          {[
+            {
+              icon:<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="4" width="16" height="11" rx="2" stroke="var(--accent)" strokeWidth="1.4"/><path d="M1 6.5L9 11L17 6.5" stroke="var(--accent)" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+              label:"General inquiries",
+              email:"support@verifychain.io",
+              desc:"Help with applications, buyer verification, or technical issues.",
+            },
+            {
+              icon:<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1" y="4" width="16" height="11" rx="2" stroke="var(--purple)" strokeWidth="1.4"/><path d="M1 6.5L9 11L17 6.5" stroke="var(--purple)" strokeWidth="1.4" strokeLinecap="round"/></svg>,
+              label:"Partnerships & investment",
+              email:"invest@verifychain.io",
+              desc:"Enterprise pilots, strategic partnerships, and investor inquiries.",
+            },
+          ].map(c=>(
+            <div key={c.email} style={{
+              padding:"24px",borderRadius:16,
+              background:"var(--surface)",border:"1px solid var(--border)",
+            }}>
+              <div style={{
+                width:40,height:40,borderRadius:11,marginBottom:16,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                background:"rgba(255,255,255,0.04)",border:"1px solid var(--border)",
+              }}>{c.icon}</div>
+              <div style={{fontSize:11,color:"var(--muted)",fontFamily:"DM Mono,monospace",letterSpacing:"0.06em",marginBottom:6}}>{c.label.toUpperCase()}</div>
+              <a href={`mailto:${c.email}`} style={{
+                display:"block",fontWeight:700,fontSize:14,color:"var(--accent)",
+                textDecoration:"none",marginBottom:8,
+              }}>{c.email}</a>
+              <div style={{fontSize:13,color:"var(--muted2)",lineHeight:1.65}}>{c.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Contact form */}
+        <div style={{
+          background:"var(--surface)",border:"1px solid var(--border)",
+          borderRadius:20,padding:"36px",maxWidth:640,
+        }}>
+          {sent ? (
+            <div style={{textAlign:"center",padding:"20px 0"}}>
+              <div style={{
+                width:56,height:56,borderRadius:16,margin:"0 auto 16px",
+                background:"rgba(0,229,160,0.1)",border:"1px solid rgba(0,229,160,0.2)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+              }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 13L9 17L19 7" stroke="var(--green)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div style={{fontWeight:800,fontSize:18,marginBottom:8}}>Message sent!</div>
+              <div style={{fontSize:14,color:"var(--muted2)"}}>We'll get back to you within 24 hours.</div>
+            </div>
+          ) : (
+            <>
+              <div style={{fontWeight:700,fontSize:18,marginBottom:6}}>Send a message</div>
+              <div style={{fontSize:14,color:"var(--muted2)",marginBottom:24,lineHeight:1.65}}>
+                Fill in the form and we'll get back to you within 24 hours.
+              </div>
+              <div style={{display:"flex",flexDirection:"column" as const,gap:14}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div>
+                    <div style={{fontSize:11,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:6}}>YOUR NAME</div>
+                    <input className="input" value={name} onChange={e=>setName(e.target.value)} placeholder="Jane Smith"/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:11,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:6}}>EMAIL ADDRESS</div>
+                    <input className="input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="jane@company.com"/>
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:11,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:6}}>MESSAGE</div>
+                  <textarea className="input" rows={5} value={message} onChange={e=>setMessage(e.target.value)}
+                    placeholder="Tell us about your project, use case, or how we can help…"
+                    style={{resize:"vertical",minHeight:100}}
+                  />
+                </div>
+                <button onClick={submit} disabled={sending} className="btn btn-primary" style={{width:"fit-content",padding:"12px 28px",fontSize:14}}>
+                  {sending ? <span className="spinner"/> : "Send message →"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </Section>
     </div>
   );
 }
@@ -687,6 +816,8 @@ export default function HomePage() {
           </div>
         </Section>
       </div>
+
+      <ContactSection/>
 
       <Footer/>
 

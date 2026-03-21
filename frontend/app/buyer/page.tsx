@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useReadContract } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
@@ -9,6 +9,7 @@ import Link from "next/link";
 import { CONTRACT_ABI, CONTRACT_ADDRESS, TIER_NAMES } from "../../lib/web3";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://verifychain-zeta.vercel.app";
 
 function Nav() {
   return (
@@ -27,41 +28,169 @@ function Nav() {
   );
 }
 
-function ResultCard({ data, wallet }: { data: any; wallet: string }) {
+// Registry-approved card (DB approved, not yet on-chain)
+function RegistryCard({ db, wallet }: { db: any; wallet: string }) {
+  const tierNames = ["","Basic","Standard","Premium"];
+  const tier = Number(db.tier || 0);
+  const expires = db.expiresAt ? new Date(db.expiresAt).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : "—";
+  return (
+    <div className="card animate-in" style={{border:"1px solid rgba(255,181,71,0.3)",padding:0,overflow:"hidden"}}>
+      <div style={{
+        padding:"24px 28px",borderBottom:"1px solid rgba(255,181,71,0.15)",
+        background:"rgba(255,181,71,0.04)",
+        display:"flex",alignItems:"center",justifyContent:"space-between",gap:16,flexWrap:"wrap" as const,
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{
+            width:48,height:48,borderRadius:14,background:"rgba(255,181,71,0.1)",
+            border:"1px solid rgba(255,181,71,0.3)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,
+          }}>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M11 2L20 6.5V15.5L11 20L2 15.5V6.5L11 2Z" stroke="#ffb547" strokeWidth="1.5" fill="none"/>
+              <path d="M11 7V12M11 14.5V15" stroke="#ffb547" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{fontWeight:800,fontSize:20}}>{db.companyName}</div>
+            <div style={{fontSize:13,color:"#ffb547",marginTop:2}}>Registry Approved · On-chain mint pending</div>
+          </div>
+        </div>
+        <div style={{
+          padding:"6px 14px",borderRadius:99,
+          background:"rgba(255,181,71,0.1)",border:"1px solid rgba(255,181,71,0.3)",
+          fontSize:12,fontFamily:"DM Mono,monospace",color:"#ffb547",fontWeight:600,
+        }}>
+          TIER {tier} · {(tierNames[tier]||"—").toUpperCase()}
+        </div>
+      </div>
+      <div style={{padding:"24px 28px"}}>
+        <div style={{
+          padding:"12px 16px",borderRadius:10,marginBottom:20,
+          background:"rgba(255,181,71,0.06)",border:"1px solid rgba(255,181,71,0.15)",
+          fontSize:13,color:"#ffb547",lineHeight:1.65,
+        }}>
+          This supplier is <strong>approved in the VerifyChain registry</strong> and their documents have been verified. The blockchain credential is being minted — full on-chain verification will be available shortly.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+          {[
+            {l:"Company",  v:db.companyName},
+            {l:"Tax ID",   v:db.taxId||"—"},
+            {l:"Country",  v:db.country||"—"},
+            {l:"Tier",     v:tierNames[tier]||"—"},
+            {l:"Expires",  v:expires},
+            {l:"Status",   v:"Registry Approved"},
+          ].map(({l,v})=>(
+            <div key={l} className="card-sm">
+              <div style={{fontSize:10,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:4}}>{l.toUpperCase()}</div>
+              <div style={{fontSize:13,fontWeight:600}}>{v}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap" as const}}>
+          <button className="btn btn-ghost" style={{fontSize:13}} onClick={()=>{
+            navigator.clipboard.writeText(`${APP_URL}/verify/${wallet}`);
+            toast.success("Share link copied!");
+          }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="10.5" cy="2.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="10.5" cy="11.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="3.5" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 6.1L9.1 3.4M5 7.9L9.1 10.6" stroke="currentColor" strokeWidth="1.3"/></svg>
+            Share verification
+          </button>
+          <a href={`https://sepolia.arbiscan.io/address/${wallet}`} target="_blank" rel="noreferrer" className="btn btn-ghost" style={{fontSize:13}}>
+            View on Arbiscan →
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResultCard({ data, wallet, dbSupplier }: { data: any; wallet: string; dbSupplier?: any }) {
   const isValid = data?.isValid;
   const cred = data?.cred;
   const tier = cred ? Number(cred.tier) : 0;
   const tierNames = ["","Basic","Standard","Premium"];
-  const expires = cred ? new Date(Number(cred.expiresAt)*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : null;
-  const issued  = cred ? new Date(Number(cred.issuedAt)*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : null;
+  const expires = cred && Number(cred.expiresAt) > 0
+    ? new Date(Number(cred.expiresAt)*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})
+    : null;
+  const issued  = cred && Number(cred.issuedAt) > 0
+    ? new Date(Number(cred.issuedAt)*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})
+    : null;
+
+  // Show registry card if not on-chain but DB has approved record
+  if (!isValid && dbSupplier?.status === "approved") {
+    return <RegistryCard db={dbSupplier} wallet={wallet}/>;
+  }
 
   if (!isValid) return (
     <div className="card animate-in" style={{
       border:"1px solid rgba(255,77,106,0.25)",
-      background:"rgba(255,77,106,0.04)",textAlign:"center",padding:"44px 32px",
+      background:"rgba(255,77,106,0.04)",padding:"40px 32px",
     }}>
+      <div style={{display:"flex",gap:20,alignItems:"flex-start",marginBottom:24}}>
+        <div style={{
+          width:52,height:52,borderRadius:14,flexShrink:0,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          background:"rgba(255,77,106,0.1)",border:"1px solid rgba(255,77,106,0.2)",
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="var(--red)" strokeWidth="1.5"/>
+            <path d="M8 8L16 16M16 8L8 16" stroke="var(--red)" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div style={{fontWeight:800,fontSize:20,color:"var(--red)",marginBottom:8}}>No verified credential found</div>
+          <div style={{fontSize:14,color:"var(--muted2)",lineHeight:1.7}}>
+            This wallet address has no active VerifyChain credential on Arbitrum. This could mean the supplier has not applied, their application is pending, or their credential has expired.
+          </div>
+        </div>
+      </div>
+
       <div style={{
-        width:56,height:56,borderRadius:16,margin:"0 auto 18px",
-        display:"flex",alignItems:"center",justifyContent:"center",
-        background:"rgba(255,77,106,0.1)",border:"1px solid rgba(255,77,106,0.2)",
+        padding:"16px 18px",borderRadius:12,marginBottom:20,
+        background:"rgba(255,255,255,0.02)",border:"1px solid var(--border)",
       }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke="var(--red)" strokeWidth="1.5"/>
-          <path d="M8 8L16 16M16 8L8 16" stroke="var(--red)" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
+        <div style={{fontSize:12,fontWeight:700,color:"var(--muted2)",marginBottom:12}}>Before proceeding, encourage the supplier to verify through official registries:</div>
+        <div style={{display:"flex",flexDirection:"column" as const,gap:8}}>
+          {[
+            {label:"Nigeria — CAC",       href:"https://www.cac.gov.ng",            flag:"🇳🇬"},
+            {label:"Ghana — Registrar General", href:"https://www.rgd.gov.gh",      flag:"🇬🇭"},
+            {label:"Kenya — BRS",         href:"https://www.businessregistration.go.ke", flag:"🇰🇪"},
+            {label:"UK — Companies House", href:"https://www.gov.uk/get-information-about-a-company", flag:"🇬🇧"},
+            {label:"Dun & Bradstreet",    href:"https://www.dnb.com",               flag:"🌍"},
+          ].map(r=>(
+            <a key={r.href} href={r.href} target="_blank" rel="noreferrer" style={{
+              display:"flex",alignItems:"center",gap:10,padding:"8px 12px",
+              borderRadius:8,background:"rgba(255,255,255,0.02)",
+              border:"1px solid rgba(255,255,255,0.06)",
+              color:"var(--muted2)",textDecoration:"none",fontSize:13,fontWeight:600,
+              transition:"all 0.15s",
+            }}
+            onMouseEnter={e=>(e.currentTarget.style.borderColor="rgba(0,212,255,0.2)")}
+            onMouseLeave={e=>(e.currentTarget.style.borderColor="rgba(255,255,255,0.06)")}>
+              <span>{r.flag}</span>
+              <span>{r.label}</span>
+              <span style={{marginLeft:"auto",color:"var(--accent)",fontSize:11}}>→</span>
+            </a>
+          ))}
+        </div>
       </div>
-      <div style={{fontWeight:800,fontSize:20,color:"var(--red)",marginBottom:8}}>Not Verified</div>
-      <div style={{fontSize:14,color:"var(--muted2)",lineHeight:1.65,marginBottom:20}}>
-        No active credential found on Arbitrum for this address.<br/>
-        Do not proceed with this supplier.
-      </div>
+
       <div style={{
-        fontFamily:"DM Mono,monospace",fontSize:12,padding:"10px 16px",
+        fontFamily:"DM Mono,monospace",fontSize:11,padding:"10px 14px",
         borderRadius:10,background:"var(--surface2)",color:"var(--muted)",
-        wordBreak:"break-all" as const,
-      }}>{wallet}</div>
+        wordBreak:"break-all" as const,border:"1px solid var(--border)",
+      }}>
+        <span style={{color:"var(--muted)",marginRight:8,fontSize:10}}>QUERIED WALLET</span>
+        {wallet}
+      </div>
+
+      <div style={{marginTop:14,fontSize:12,color:"var(--muted)",lineHeight:1.7}}>
+        If this supplier claims to be verified, ask them to share their VerifyChain wallet address and apply at{" "}
+        <Link href="/supplier" style={{color:"var(--accent)"}}>verifychain.io/supplier</Link>.
+      </div>
     </div>
   );
+
+  const tokenId = dbSupplier?.tokenId;
 
   return (
     <div className="card animate-in" style={{border:"1px solid rgba(0,229,160,0.25)",padding:0,overflow:"hidden"}}>
@@ -83,7 +212,10 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
           </div>
           <div>
             <div style={{fontWeight:800,fontSize:20}}>{cred.companyName}</div>
-            <div style={{fontSize:13,color:"var(--green)",marginTop:2}}>Verified · Credential active on Arbitrum</div>
+            <div style={{fontSize:13,color:"var(--green)",marginTop:2}}>
+              Verified on-chain · Credential active on Arbitrum
+              {tokenId && <span style={{marginLeft:8,fontFamily:"DM Mono,monospace",opacity:0.75}}>#{tokenId}</span>}
+            </div>
           </div>
         </div>
         <div style={{
@@ -103,9 +235,9 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
             {l:"Company",   v:cred.companyName},
             {l:"Tax ID",    v:cred.taxId},
             {l:"Country",   v:cred.country},
-            {l:"Issued",    v:issued},
-            {l:"Expires",   v:expires},
-            {l:"Network",   v:"Arbitrum"},
+            {l:"Issued",    v:issued||"—"},
+            {l:"Expires",   v:expires||"—"},
+            {l:"Token ID",  v:tokenId ? `#${tokenId}` : "On-chain"},
           ].map(({l,v})=>(
             <div key={l} className="card-sm">
               <div style={{fontSize:10,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:4}}>{l.toUpperCase()}</div>
@@ -115,7 +247,7 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
         </div>
 
         {/* IPFS CID */}
-        {cred.docsIPFSHash && (
+        {cred.docsIPFSHash && !cred.docsIPFSHash.startsWith("local:") && (
           <div style={{marginBottom:20}}>
             <div style={{fontSize:10,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:6}}>VERIFIED DOCUMENTS (FILECOIN CID)</div>
             <div style={{
@@ -129,6 +261,13 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
         {/* Actions */}
         <div style={{display:"flex",gap:10,flexWrap:"wrap" as const}}>
           <button className="btn btn-ghost" style={{fontSize:13}} onClick={()=>{
+            navigator.clipboard.writeText(`${APP_URL}/verify/${wallet}`);
+            toast.success("Share link copied!");
+          }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="10.5" cy="2.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="10.5" cy="11.5" r="1.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="3.5" cy="7" r="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 6.1L9.1 3.4M5 7.9L9.1 10.6" stroke="currentColor" strokeWidth="1.3"/></svg>
+            Share verification
+          </button>
+          <button className="btn btn-ghost" style={{fontSize:13}} onClick={()=>{
             const txt = `VERIFYCHAIN VERIFICATION REPORT\n${"─".repeat(40)}\nCompany: ${cred.companyName}\nTax ID: ${cred.taxId}\nCountry: ${cred.country}\nTier: ${tierNames[tier]}\nIssued: ${issued}\nExpires: ${expires}\nWallet: ${wallet}\nNetwork: Arbitrum\nVerified at: ${new Date().toISOString()}\n`;
             const url=URL.createObjectURL(new Blob([txt],{type:"text/plain"}));
             const a=document.createElement("a"); a.href=url; a.download=`verifychain_${cred.companyName.replace(/ /g,"_")}.txt`; a.click();
@@ -136,14 +275,18 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1V9M7 9L4 6.5M7 9L10 6.5M1 11V13H13V11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Download report
           </button>
-          <button className="btn btn-ghost" style={{fontSize:13}} onClick={()=>{navigator.clipboard.writeText(wallet); toast.success("Copied!");}}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4" y="4" width="9" height="9" rx="2" stroke="currentColor" strokeWidth="1.3"/><path d="M4 10H2C1.45 10 1 9.55 1 9V2C1 1.45 1.45 1 2 1H9C9.55 1 10 1.45 10 2V4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-            Copy wallet
-          </button>
           <a href={`https://sepolia.arbiscan.io/address/${wallet}`} target="_blank" rel="noreferrer" className="btn btn-ghost" style={{fontSize:13}}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5.5 2H2C1.45 2 1 2.45 1 3V12C1 12.55 1.45 13 2 13H11C11.55 13 12 12.55 12 12V8.5M8 1H13M13 1V6M13 1L6 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            View on Arbiscan
+            View on Arbiscan →
           </a>
+          {tokenId && (
+            <a
+              href={`https://sepolia.arbiscan.io/token/${process.env.NEXT_PUBLIC_CONTRACT_ADDRESS}?a=${tokenId}`}
+              target="_blank" rel="noreferrer" className="btn btn-ghost" style={{fontSize:13}}
+            >
+              View credential NFT →
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -171,6 +314,8 @@ export default function BuyerPage() {
   // company-name search
   const [companyResults, setCompanyResults] = useState<any[]|null>(null);
   const [companyLoading, setCompanyLoading] = useState(false);
+  // DB fallback for non-on-chain suppliers
+  const [dbSupplier, setDbSupplier] = useState<any>(null);
   // api key
   const [apiKey, setApiKey]   = useState<string|null>(null);
   const [company, setCompany] = useState("");
@@ -195,10 +340,30 @@ export default function BuyerPage() {
 
   const isLoading = walletLoading || taxidLoading || companyLoading;
 
+  // DB fallback: when chain returns not-valid, check if supplier is approved in DB
+  useEffect(() => {
+    if (!walletData || walletData[0]) { setDbSupplier(null); return; }
+    if (!target) return;
+    axios.get(`${API}/api/supplier/${target}`)
+      .then(r => setDbSupplier(r.data))
+      .catch(() => setDbSupplier(null));
+  }, [walletData, target]);
+
+  useEffect(() => {
+    if (!taxidData || taxidData[0]) { setDbSupplier(null); return; }
+    if (!taxIdTarget) return;
+    const w = taxidData[2] as string;
+    if (!w || w === "0x0000000000000000000000000000000000000000") { setDbSupplier(null); return; }
+    axios.get(`${API}/api/supplier/${w}`)
+      .then(r => setDbSupplier(r.data))
+      .catch(() => setDbSupplier(null));
+  }, [taxidData, taxIdTarget]);
+
   const clearResults = () => {
     setTarget(null);
     setTaxIdTarget(null);
     setCompanyResults(null);
+    setDbSupplier(null);
   };
 
   const search = async () => {
@@ -405,10 +570,10 @@ export default function BuyerPage() {
 
         {/* Wallet / Tax-ID results */}
         {!walletLoading && walletData && target && (
-          <ResultCard data={{isValid:walletData[0],cred:walletData[1]}} wallet={target}/>
+          <ResultCard data={{isValid:walletData[0],cred:walletData[1]}} wallet={target} dbSupplier={dbSupplier}/>
         )}
         {!taxidLoading && taxidData && taxIdTarget && (
-          <ResultCard data={{isValid:taxidData[0],cred:taxidData[1]}} wallet={taxidWallet}/>
+          <ResultCard data={{isValid:taxidData[0],cred:taxidData[1]}} wallet={taxidWallet} dbSupplier={dbSupplier}/>
         )}
 
         {/* API Access */}

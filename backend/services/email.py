@@ -151,3 +151,28 @@ def send_approval_email(to_email: str, company_name: str, token_id: int, tier: i
     except Exception as e:
         print(f"Email send failed: {e}")
         return None
+
+
+def send_contact_email(name: str, email: str, message: str):
+    if not resend.api_key:
+        print(f"[contact] {name} <{email}>: {message}")
+        return None
+    try:
+        return resend.Emails.send({
+            "from": FROM_EMAIL,
+            "to": ["support@verifychain.io"],
+            "reply_to": email,
+            "subject": f"[VerifyChain Contact] Message from {name}",
+            "html": f"""
+<!DOCTYPE html><html><body style="margin:0;padding:32px;background:#05080f;font-family:Arial,sans-serif;color:#f0f4ff;">
+<h2 style="margin:0 0 16px;color:#00d4ff;">New contact form submission</h2>
+<p><strong>From:</strong> {name} &lt;{email}&gt;</p>
+<div style="background:#0c1120;border:1px solid rgba(0,212,255,0.2);border-radius:12px;padding:20px;margin-top:12px;">
+<pre style="margin:0;font-family:Arial,sans-serif;font-size:14px;line-height:1.65;white-space:pre-wrap;">{message}</pre>
+</div>
+</body></html>
+            """,
+        })
+    except Exception as e:
+        print(f"Contact email failed: {e}")
+        return None
