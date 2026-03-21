@@ -4,6 +4,7 @@ import aiofiles
 from pathlib import Path
 from fastapi import UploadFile
 import hashlib
+import base58
 
 W3_TOKEN = os.getenv("WEB3_STORAGE_TOKEN", "")
 UPLOAD_DIR = Path("./uploads")
@@ -26,8 +27,8 @@ async def upload_file(file: UploadFile) -> tuple[str, str]:
         await f.write(contents)
 
     # Generate valid base58 CID-like hash
-    file_hash = hashlib.sha256(contents).hexdigest()[:32]
-    placeholder = "Qm" + file_hash[:44]
+    file_hash = hashlib.sha256(contents).digest()[:32]
+    placeholder = 'Qm' + base58.b58encode(file_hash).decode()[:44]
     return filename, placeholder
 
 async def upload_multiple(files: list[UploadFile]) -> dict[str, str]:
