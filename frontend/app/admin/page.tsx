@@ -214,7 +214,11 @@ function AppCard({ app, onApprove, onReject }: {
           </div>
           <div style={{display:"flex",gap:8,flexShrink:0,flexWrap:"wrap" as const}}>
             {app.docsIPFS&&(
-              <a href={`https://w3s.link/ipfs/${app.docsIPFS}`} target="_blank" rel="noreferrer"
+              <a href={
+                app.docsIPFS.startsWith("local:")
+                  ? `${API}/api/supplier/docs/${app.docsIPFS.slice(6)}`
+                  : `https://w3s.link/ipfs/${app.docsIPFS}`
+              } target="_blank" rel="noreferrer"
                 className="btn btn-ghost" style={{fontSize:12,padding:"8px 14px"}}>View docs</a>
             )}
             <button onClick={()=>setShowReject(true)} disabled={loading}
@@ -238,6 +242,7 @@ export default function AdminPage() {
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(()=>{
     const ok = sessionStorage.getItem("vc_admin_auth");
@@ -365,7 +370,15 @@ export default function AdminPage() {
         )}
 
         {tab==="all"&&(
-          <div className="animate-in-3" style={{background:"var(--surface)",
+          <div className="animate-in-3">
+            <div style={{marginBottom:12}}>
+              <input
+                className="input" placeholder="Search by company, wallet, or tax ID..."
+                value={search} onChange={e=>setSearch(e.target.value)}
+                style={{width:"100%"}}
+              />
+            </div>
+          <div style={{background:"var(--surface)",
             border:"1px solid var(--border)",borderRadius:18,overflow:"hidden"}}>
             <div style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 1fr 0.7fr 0.7fr 0.8fr",
               padding:"12px 22px",background:"var(--surface2)",borderBottom:"1px solid var(--border)"}}>
@@ -378,12 +391,18 @@ export default function AdminPage() {
               <div style={{textAlign:"center",padding:40}}>
                 <div className="spinner" style={{margin:"0 auto",width:24,height:24}}/>
               </div>
-            ):suppliers.length===0?(
-              <div style={{textAlign:"center",padding:"40px",color:"var(--muted)",fontSize:14}}>No suppliers yet</div>
-            ):suppliers.map((s,i)=>(
+            ):suppliers.filter(s=>{
+              const q=search.toLowerCase();
+              return !q||s.companyName?.toLowerCase().includes(q)||s.wallet?.toLowerCase().includes(q)||s.taxId?.toLowerCase().includes(q);
+            }).length===0?(
+              <div style={{textAlign:"center",padding:"40px",color:"var(--muted)",fontSize:14}}>{search?"No results for that search":"No suppliers yet"}</div>
+            ):suppliers.filter(s=>{
+              const q=search.toLowerCase();
+              return !q||s.companyName?.toLowerCase().includes(q)||s.wallet?.toLowerCase().includes(q)||s.taxId?.toLowerCase().includes(q);
+            }).map((s,i,arr)=>(
               <div key={s.id} style={{display:"grid",gridTemplateColumns:"2fr 1.2fr 1fr 0.7fr 0.7fr 0.8fr",
                 padding:"14px 22px",alignItems:"center",
-                borderBottom:i<suppliers.length-1?"1px solid var(--border)":"none",
+                borderBottom:i<arr.length-1?"1px solid var(--border)":"none",
                 transition:"background 0.15s"}}
                 onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.015)"}
                 onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="transparent"}>
@@ -411,6 +430,7 @@ export default function AdminPage() {
                 <div><span className={`badge badge-${s.status}`}>{s.status?.toUpperCase()}</span></div>
               </div>
             ))}
+          </div>
           </div>
         )}
       </div>

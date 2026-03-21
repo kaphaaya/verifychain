@@ -6,7 +6,7 @@ from datetime import datetime, timezone, timedelta
 import os
 
 from database import get_db, Supplier
-from services.blockchain import mint_credential, revoke_credential
+from services.blockchain import mint_credential, revoke_credential, verify_supplier_onchain
 from services.email import send_rejection_email, send_approval_email
 
 router = APIRouter()
@@ -63,16 +63,33 @@ async def approve_supplier(supplier_id: int, body: ApproveBody, db: AsyncSession
         raise HTTPException(404, "Supplier not found")
     if supplier.status == "approved":
         raise HTTPException(400, "Already approved")
+
+    # ISSUE 5: Check if wallet already has a credential on-chain — skip mint if so
+    tx_hash = "already_on_chain"
+    already_on_chain = False
     try:
-        tx_hash, success = mint_credential(
-            supplier_wallet=supplier.wallet, company_name=supplier.company_name,
-            tax_id=supplier.tax_id, country=supplier.country,
-            docs_ipfs_hash=supplier.docs_ipfs or "ipfs://none", tier=body.tier,
-        )
-    except Exception as e:
-        raise HTTPException(500, f"Blockchain mint failed: {str(e)}")
-    if not success:
-        raise HTTPException(500, "Transaction reverted on-chain")
+        onchain = verify_supplier_onchain(supplier.wallet)
+        if onchain.get("isValid"):
+            already_on_chain = True
+    except Exception:
+        pass
+
+    if not already_on_chain:
+        # Sanitise docs hash: strip local: prefix before storing on-chain
+        docs_ipfs_hash = supplier.docs_ipfs or "ipfs://none"
+        if docs_ipfs_hash.startswith("local:"):
+            docs_ipfs_hash = "ipfs://local"
+        try:
+            tx_hash, success = mint_credential(
+                supplier_wallet=supplier.wallet, company_name=supplier.company_name,
+                tax_id=supplier.tax_id, country=supplier.country,
+                docs_ipfs_hash=docs_ipfs_hash, tier=body.tier,
+            )
+        except Exception as e:
+            raise HTTPException(500, f"Blockchain mint failed: {str(e)}")
+        if not success:
+            raise HTTPException(500, "Transaction reverted on-chain")
+
     supplier.status = "approved"
     supplier.tier = body.tier
     supplier.approved_at = datetime.utcnow()

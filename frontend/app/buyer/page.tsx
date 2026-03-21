@@ -30,11 +30,11 @@ function Nav() {
 function ResultCard({ data, wallet }: { data: any; wallet: string }) {
   const isValid = data?.isValid;
   const cred = data?.cred;
-  const tier = cred ? Number(cred[8]) : 0;
+  const tier = cred ? Number(cred.tier) : 0;
   const tierNames = ["","Basic","Standard","Premium"];
   const tierColors = ["","var(--muted2)","var(--accent)","var(--purple)"];
-  const expires = cred ? new Date(Number(cred[6])*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : null;
-  const issued  = cred ? new Date(Number(cred[5])*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : null;
+  const expires = cred ? new Date(Number(cred.expiresAt)*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : null;
+  const issued  = cred ? new Date(Number(cred.issuedAt)*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : null;
 
   if (!isValid) return (
     <div className="card animate-in" style={{
@@ -83,7 +83,7 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
             </svg>
           </div>
           <div>
-            <div style={{fontWeight:800,fontSize:20}}>{cred[1]}</div>
+            <div style={{fontWeight:800,fontSize:20}}>{cred.companyName}</div>
             <div style={{fontSize:13,color:"var(--green)",marginTop:2}}>Verified · Credential active on Arbitrum</div>
           </div>
         </div>
@@ -101,9 +101,9 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
       <div style={{padding:"24px 28px"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
           {[
-            {l:"Company",   v:cred[1]},
-            {l:"Tax ID",    v:cred[2]},
-            {l:"Country",   v:cred[3]},
+            {l:"Company",   v:cred.companyName},
+            {l:"Tax ID",    v:cred.taxId},
+            {l:"Country",   v:cred.country},
             {l:"Issued",    v:issued},
             {l:"Expires",   v:expires},
             {l:"Network",   v:"Arbitrum"},
@@ -116,23 +116,23 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
         </div>
 
         {/* IPFS CID */}
-        {cred[4] && (
+        {cred.docsIPFSHash && (
           <div style={{marginBottom:20}}>
             <div style={{fontSize:10,color:"var(--muted)",fontFamily:"DM Mono,monospace",marginBottom:6}}>VERIFIED DOCUMENTS (FILECOIN CID)</div>
             <div style={{
               fontFamily:"DM Mono,monospace",fontSize:11,padding:"10px 14px",
               borderRadius:10,background:"var(--surface2)",color:"var(--accent)",
               wordBreak:"break-all" as const,border:"1px solid var(--border)",
-            }}>{cred[4]}</div>
+            }}>{cred.docsIPFSHash}</div>
           </div>
         )}
 
         {/* Actions */}
         <div style={{display:"flex",gap:10,flexWrap:"wrap" as const}}>
           <button className="btn btn-ghost" style={{fontSize:13}} onClick={()=>{
-            const txt = `VERIFYCHAIN VERIFICATION REPORT\n${"─".repeat(40)}\nCompany: ${cred[1]}\nTax ID: ${cred[2]}\nCountry: ${cred[3]}\nTier: ${tierNames[tier]}\nIssued: ${issued}\nExpires: ${expires}\nWallet: ${wallet}\nNetwork: Arbitrum\nVerified at: ${new Date().toISOString()}\n`;
+            const txt = `VERIFYCHAIN VERIFICATION REPORT\n${"─".repeat(40)}\nCompany: ${cred.companyName}\nTax ID: ${cred.taxId}\nCountry: ${cred.country}\nTier: ${tierNames[tier]}\nIssued: ${issued}\nExpires: ${expires}\nWallet: ${wallet}\nNetwork: Arbitrum\nVerified at: ${new Date().toISOString()}\n`;
             const url=URL.createObjectURL(new Blob([txt],{type:"text/plain"}));
-            const a=document.createElement("a"); a.href=url; a.download=`verifychain_${cred[1].replace(/ /g,"_")}.txt`; a.click();
+            const a=document.createElement("a"); a.href=url; a.download=`verifychain_${cred.companyName.replace(/ /g,"_")}.txt`; a.click();
           }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1V9M7 9L4 6.5M7 9L10 6.5M1 11V13H13V11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Download report

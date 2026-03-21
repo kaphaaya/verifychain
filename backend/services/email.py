@@ -3,7 +3,7 @@ import os
 
 resend.api_key = os.getenv("RESEND_API_KEY", "")
 
-FROM_EMAIL = "VerifyChain <noreply@verifychain.io>"
+FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev")
 
 def send_rejection_email(to_email: str, company_name: str, reason: str, attempts_left: int):
     if not resend.api_key or not to_email:
