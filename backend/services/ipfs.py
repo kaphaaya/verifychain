@@ -27,7 +27,7 @@ async def upload_file(file: UploadFile) -> tuple[str, str]:
 
     # Generate valid base58 CID-like hash
     file_hash = hashlib.sha256(contents).hexdigest()[:32]
-    placeholder = "Qm" + file_hash.upper()[:44]
+    placeholder = "Qm" + file_hash[:44]
     return filename, placeholder
 
 async def upload_multiple(files: list[UploadFile]) -> dict[str, str]:

@@ -159,7 +159,7 @@ def _send_tx(fn):
         "from":     account.address,
         "nonce":    nonce,
         "gas":      500_000,
-        "gasPrice": w3.eth.gas_price,
+        "maxFeePerGas": w3.eth.gas_price * 2, "maxPriorityFeePerGas": w3.eth.gas_price,
     })
     signed  = w3.eth.account.sign_transaction(tx, private_key=ADMIN_PRIVATE_KEY)
     tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
