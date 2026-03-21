@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
@@ -10,6 +10,23 @@ from services.blockchain import verify_supplier_onchain
 
 router = APIRouter()
 MAX_ATTEMPTS = 3
+
+
+@router.get("/search")
+async def search_suppliers(q: str = Query(..., min_length=1), db: AsyncSession = Depends(get_db)):
+    """Search suppliers by company name (partial, case-insensitive). Returns wallet + basic info."""
+    result = await db.execute(
+        select(Supplier)
+        .where(Supplier.company_name.ilike(f"%{q}%"))
+        .order_by(Supplier.company_name)
+        .limit(10)
+    )
+    suppliers = result.scalars().all()
+    return [
+        {"wallet": s.wallet, "companyName": s.company_name, "country": s.country,
+         "tier": s.tier, "status": s.status}
+        for s in suppliers
+    ]
 
 @router.post("/apply")
 async def apply(

@@ -169,10 +169,32 @@ function RejectModal({ app, onConfirm, onCancel }: { app: any; onConfirm:(r:stri
 function AppCard({ app, onApprove, onReject }: {
   app: any; onApprove:(id:number,tier:number)=>void; onReject:(id:number,reason:string)=>void;
 }) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]       = useState(false);
   const [showReject, setShowReject] = useState(false);
+  const [showDocs, setShowDocs]     = useState(false);
+  const [docs, setDocs]             = useState<any[]|null>(null);
+  const [docsLoading, setDocsLoading] = useState(false);
+
   const tierColors = ["","var(--muted2)","var(--accent)","var(--purple)"];
   const tierLabels = ["","Basic","Standard","Premium"];
+
+  const toggleDocs = async () => {
+    if (showDocs) { setShowDocs(false); return; }
+    setShowDocs(true);
+    if (docs !== null) return; // already fetched
+    setDocsLoading(true);
+    try {
+      const { data } = await axios.get(`${API}/api/admin/supplier/${app.id}/documents`, { headers: H });
+      setDocs(data || []);
+    } catch { toast.error("Could not load documents"); setDocs([]); }
+    finally { setDocsLoading(false); }
+  };
+
+  const docUrl = (doc: any) =>
+    doc.isLocal
+      ? `${API}/api/supplier/docs/${doc.localName}`
+      : doc.ipfsUrl || `https://w3s.link/ipfs/${doc.cid}`;
+
   return (
     <>
       {showReject && (
@@ -181,9 +203,11 @@ function AppCard({ app, onApprove, onReject }: {
           onCancel={()=>setShowReject(false)}/>
       )}
       <div style={{border:"1px solid var(--border)",borderRadius:18,background:"var(--surface)",
-        transition:"border-color 0.2s"}}
+        transition:"border-color 0.2s",overflow:"hidden"}}
         onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor="var(--border2)"}
         onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor="var(--border)"}>
+
+        {/* Main row */}
         <div style={{padding:"20px 22px",display:"flex",gap:16,alignItems:"flex-start",
           justifyContent:"space-between",flexWrap:"wrap" as const}}>
           <div style={{flex:1,minWidth:0}}>
@@ -213,14 +237,12 @@ function AppCard({ app, onApprove, onReject }: {
             </div>
           </div>
           <div style={{display:"flex",gap:8,flexShrink:0,flexWrap:"wrap" as const}}>
-            {app.docsIPFS&&(
-              <a href={
-                app.docsIPFS.startsWith("local:")
-                  ? `${API}/api/supplier/docs/${app.docsIPFS.slice(6)}`
-                  : `https://w3s.link/ipfs/${app.docsIPFS}`
-              } target="_blank" rel="noreferrer"
-                className="btn btn-ghost" style={{fontSize:12,padding:"8px 14px"}}>View docs</a>
-            )}
+            <button onClick={toggleDocs}
+              className="btn btn-ghost" style={{fontSize:12,padding:"8px 14px",
+                color:showDocs?"var(--accent)":"inherit",
+                border:showDocs?"1px solid rgba(0,212,255,0.3)":"1px solid var(--border)"}}>
+              {showDocs?"Hide docs ↑":"Documents ↓"}
+            </button>
             <button onClick={()=>setShowReject(true)} disabled={loading}
               className="btn btn-danger" style={{fontSize:12,padding:"8px 14px"}}>Reject</button>
             <button onClick={async()=>{setLoading(true);await onApprove(app.id,app.tier||2);setLoading(false);}}
@@ -229,6 +251,68 @@ function AppCard({ app, onApprove, onReject }: {
             </button>
           </div>
         </div>
+
+        {/* Documents panel */}
+        {showDocs && (
+          <div style={{borderTop:"1px solid var(--border)",background:"rgba(255,255,255,0.01)"}}>
+            {docsLoading ? (
+              <div style={{padding:"28px",textAlign:"center"}}>
+                <div className="spinner" style={{margin:"0 auto",width:22,height:22}}/>
+              </div>
+            ) : docs?.length === 0 ? (
+              <div style={{padding:"20px 22px",fontSize:13,color:"var(--muted)"}}>
+                No documents found for this application.
+              </div>
+            ) : (
+              <div style={{padding:"0 22px"}}>
+                <div style={{fontSize:10,color:"var(--muted)",fontFamily:"DM Mono,monospace",
+                  letterSpacing:"0.06em",padding:"14px 0 10px"}}>
+                  SUBMITTED DOCUMENTS ({docs?.length})
+                </div>
+                {docs?.map((doc, i) => (
+                  <div key={doc.id} style={{
+                    display:"flex",alignItems:"center",justifyContent:"space-between",
+                    padding:"12px 0",
+                    borderTop: i > 0 ? "1px solid var(--border)" : "none",
+                    gap:12,
+                  }}>
+                    <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
+                      {/* File icon */}
+                      <div style={{
+                        width:36,height:36,borderRadius:10,flexShrink:0,
+                        background:"rgba(0,212,255,0.06)",border:"1px solid rgba(0,212,255,0.12)",
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                          <path d="M3 2C3 1.45 3.45 1 4 1H9L13 5V14C13 14.55 12.55 15 12 15H4C3.45 15 3 14.55 3 14V2Z"
+                            stroke="var(--accent)" strokeWidth="1.2" fill="none"/>
+                          <path d="M9 1V5H13" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round"/>
+                          <path d="M6 8H10M6 11H10" stroke="var(--accent)" strokeWidth="1.1" strokeLinecap="round"/>
+                        </svg>
+                      </div>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontSize:13,fontWeight:600,marginBottom:2}}>{doc.label}</div>
+                        <div style={{fontSize:11,color:"var(--muted)",fontFamily:"DM Mono,monospace",
+                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>
+                          {doc.filename}
+                          {doc.isLocal && (
+                            <span style={{marginLeft:6,color:"var(--muted)",fontSize:10}}>· stored locally</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <a href={docUrl(doc)} target="_blank" rel="noreferrer"
+                      className="btn btn-ghost"
+                      style={{fontSize:12,padding:"7px 14px",flexShrink:0}}>
+                      View →
+                    </a>
+                  </div>
+                ))}
+                <div style={{height:14}}/>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );

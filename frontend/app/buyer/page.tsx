@@ -32,7 +32,6 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
   const cred = data?.cred;
   const tier = cred ? Number(cred.tier) : 0;
   const tierNames = ["","Basic","Standard","Premium"];
-  const tierColors = ["","var(--muted2)","var(--accent)","var(--purple)"];
   const expires = cred ? new Date(Number(cred.expiresAt)*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : null;
   const issued  = cred ? new Date(Number(cred.issuedAt)*1000).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : null;
 
@@ -151,31 +150,92 @@ function ResultCard({ data, wallet }: { data: any; wallet: string }) {
   );
 }
 
+type SearchMode = "wallet" | "taxid" | "company";
+
 export default function BuyerPage() {
   const { address, isConnected } = useAccount();
-  const [query, setQuery] = useState("");
-  const [searchBy, setSearchBy] = useState<"wallet"|"taxid">("wallet");
-  const [target, setTarget] = useState<`0x${string}`|null>(null);
-  const [apiKey, setApiKey] = useState<string|null>(null);
+  const [query, setQuery]               = useState("");
+  const [searchBy, setSearchBy]         = useState<SearchMode>("wallet");
+  // wallet search
+  const [target, setTarget]             = useState<`0x${string}`|null>(null);
+  // tax-id search
+  const [taxIdTarget, setTaxIdTarget]   = useState<string|null>(null);
+  // company-name search
+  const [companyResults, setCompanyResults] = useState<any[]|null>(null);
+  const [companyLoading, setCompanyLoading] = useState(false);
+  // api key
+  const [apiKey, setApiKey]   = useState<string|null>(null);
   const [company, setCompany] = useState("");
   const [apiLoading, setApiLoading] = useState(false);
 
-  const { data, isLoading } = useReadContract({
+  // --- Contract reads ---
+  const { data: walletData, isLoading: walletLoading } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: "verifySupplier",
     args: target ? [target] : undefined,
-    query: { enabled: !!target && searchBy==="wallet" },
+    query: { enabled: !!target },
   });
 
-  const search = () => {
+  const { data: taxidData, isLoading: taxidLoading } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: "verifyByTaxId",
+    args: taxIdTarget ? [taxIdTarget] : undefined,
+    query: { enabled: !!taxIdTarget },
+  });
+
+  const isLoading = walletLoading || taxidLoading || companyLoading;
+
+  const clearResults = () => {
+    setTarget(null);
+    setTaxIdTarget(null);
+    setCompanyResults(null);
+  };
+
+  const search = async () => {
     const v = query.trim();
     if (!v) return toast.error("Enter a value to search");
-    if (searchBy==="wallet") {
-      if (!v.startsWith("0x")||v.length!==42) return toast.error("Enter a valid wallet address (0x... 42 chars)");
+
+    if (searchBy === "wallet") {
+      if (!v.startsWith("0x") || v.length !== 42)
+        return toast.error("Enter a valid wallet address (0x… 42 chars)");
       setTarget(v as `0x${string}`);
+      setTaxIdTarget(null);
+      setCompanyResults(null);
+    } else if (searchBy === "taxid") {
+      setTaxIdTarget(v);
+      setTarget(null);
+      setCompanyResults(null);
+    } else {
+      // company name — hit DB
+      setCompanyLoading(true);
+      setTarget(null);
+      setTaxIdTarget(null);
+      setCompanyResults(null);
+      try {
+        const { data: res } = await axios.get(`${API}/api/supplier/search`, { params: { q: v } });
+        if (!res?.length) toast.error("No suppliers found with that name");
+        setCompanyResults(res || []);
+      } catch { toast.error("Search failed"); }
+      finally { setCompanyLoading(false); }
     }
   };
+
+  const TABS: { k: SearchMode; label: string }[] = [
+    { k: "wallet",  label: "By wallet address" },
+    { k: "taxid",   label: "By Tax ID" },
+    { k: "company", label: "By company name" },
+  ];
+
+  const placeholders: Record<SearchMode, string> = {
+    wallet:  "0x1a2b3c...4d5e6f (42 characters)",
+    taxid:   "e.g. CAC-123456 or EIN-98-7654321",
+    company: "e.g. Acme Global Ltd",
+  };
+
+  // Resolved result wallet (for taxid, comes from chain data)
+  const taxidWallet = taxidData ? (taxidData[2] as string) : "";
 
   const getApiKey = async () => {
     if (!company) return toast.error("Enter your company name");
@@ -206,27 +266,29 @@ export default function BuyerPage() {
 
         {/* Search box */}
         <div className="card animate-in-1">
-          <div style={{display:"flex",gap:8,marginBottom:16}}>
-            {(["wallet","taxid"] as const).map(t=>(
-              <button key={t}
-                onClick={()=>{setSearchBy(t);setQuery("");setTarget(null);}}
+          <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap" as const}}>
+            {TABS.map(t=>(
+              <button key={t.k}
+                onClick={()=>{setSearchBy(t.k);setQuery("");clearResults();}}
                 className="btn"
                 style={{
                   padding:"8px 16px",fontSize:13,
-                  background:searchBy===t?"rgba(0,212,255,0.1)":"var(--surface2)",
-                  color:searchBy===t?"var(--accent)":"var(--muted2)",
-                  border:`1px solid ${searchBy===t?"rgba(0,212,255,0.3)":"var(--border)"}`,
+                  background:searchBy===t.k?"rgba(0,212,255,0.1)":"var(--surface2)",
+                  color:searchBy===t.k?"var(--accent)":"var(--muted2)",
+                  border:`1px solid ${searchBy===t.k?"rgba(0,212,255,0.3)":"var(--border)"}`,
                 }}>
-                {t==="wallet" ? "By wallet address" : "By Tax ID"}
+                {t.label}
               </button>
             ))}
           </div>
           <div style={{display:"flex",gap:10}}>
             <input
-              className="input input-mono" style={{flex:1}}
-              value={query} onChange={e=>setQuery(e.target.value)}
+              className={searchBy==="wallet" ? "input input-mono" : "input"}
+              style={{flex:1}}
+              value={query}
+              onChange={e=>setQuery(e.target.value)}
               onKeyDown={e=>e.key==="Enter"&&search()}
-              placeholder={searchBy==="wallet" ? "0x1a2b3c...4d5e6f (42 characters)" : "e.g. CAC-123456 or EIN-98-7654321"}
+              placeholder={placeholders[searchBy]}
             />
             <button onClick={search} className="btn btn-primary" style={{flexShrink:0}}>
               {isLoading ? <span className="spinner"/> : "Verify →"}
@@ -237,19 +299,72 @@ export default function BuyerPage() {
               <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1"/>
               <path d="M6 5.5V8.5M6 3.5V4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
             </svg>
-            Query is read directly from Arbitrum — results are cryptographically verified
+            {searchBy==="company"
+              ? "Matches suppliers by name from our registry, then verifies on-chain"
+              : "Query is read directly from Arbitrum — results are cryptographically verified"}
           </div>
         </div>
 
-        {/* Result */}
-        {isLoading && (
+        {/* Loading */}
+        {(walletLoading || taxidLoading) && (
           <div className="card" style={{textAlign:"center",padding:"44px"}}>
             <div className="spinner" style={{width:28,height:28,margin:"0 auto 14px",borderWidth:3}}/>
             <div style={{color:"var(--muted2)",fontSize:14}}>Querying Arbitrum blockchain...</div>
           </div>
         )}
-        {!isLoading && data && target && (
-          <ResultCard data={{isValid:data[0],cred:data[1]}} wallet={target}/>
+
+        {/* Company name results list */}
+        {!companyLoading && companyResults && companyResults.length > 0 && !target && (
+          <div className="card animate-in" style={{padding:0,overflow:"hidden"}}>
+            <div style={{
+              padding:"14px 22px",background:"var(--surface2)",
+              borderBottom:"1px solid var(--border)",
+              fontSize:11,color:"var(--muted)",fontFamily:"DM Mono,monospace",letterSpacing:"0.05em",
+            }}>
+              {companyResults.length} RESULT{companyResults.length>1?"S":""} FOUND — CLICK TO VERIFY ON-CHAIN
+            </div>
+            {companyResults.map((r,i)=>(
+              <button key={r.wallet} onClick={()=>{
+                setTarget(r.wallet as `0x${string}`);
+                setCompanyResults(null);
+              }} style={{
+                width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
+                padding:"16px 22px",cursor:"pointer",textAlign:"left" as const,
+                background:"transparent",border:"none",
+                borderBottom:i<companyResults.length-1?"1px solid var(--border)":"none",
+                transition:"background 0.15s",fontFamily:"Syne,sans-serif",
+              }}
+              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="rgba(0,212,255,0.04)"}
+              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="transparent"}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:15,color:"var(--text)",marginBottom:3}}>{r.companyName}</div>
+                  <div style={{fontSize:12,color:"var(--muted2)",display:"flex",gap:12}}>
+                    <span>🌍 {r.country||"—"}</span>
+                    <span style={{fontFamily:"DM Mono,monospace"}}>{r.wallet.slice(0,6)}...{r.wallet.slice(-4)}</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  <span style={{
+                    fontSize:10,fontFamily:"DM Mono,monospace",padding:"3px 10px",borderRadius:99,
+                    background:r.status==="approved"?"rgba(0,229,160,0.1)":"rgba(160,180,220,0.08)",
+                    color:r.status==="approved"?"var(--green)":"var(--muted)",
+                    border:`1px solid ${r.status==="approved"?"rgba(0,229,160,0.2)":"rgba(160,180,220,0.1)"}`,
+                  }}>{r.status?.toUpperCase()}</span>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{color:"var(--muted)"}}>
+                    <path d="M5 3L9 7L5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Wallet / Tax-ID results */}
+        {!walletLoading && walletData && target && (
+          <ResultCard data={{isValid:walletData[0],cred:walletData[1]}} wallet={target}/>
+        )}
+        {!taxidLoading && taxidData && taxIdTarget && (
+          <ResultCard data={{isValid:taxidData[0],cred:taxidData[1]}} wallet={taxidWallet}/>
         )}
 
         {/* API Access */}
