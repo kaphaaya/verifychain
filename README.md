@@ -91,12 +91,10 @@ Want to test the full supplier flow? Go to **https://verifychain-zeta.vercel.app
 
 ## Hackathon tracks
 
-| Track | How VerifyChain qualifies |
-|-------|--------------------------|
-| **General** | Full-stack dApp solving a real-world problem at global scale |
-| **Arbitrum** | Smart contract deployed on Arbitrum Sepolia; soul-bound NFT credentials minted on every approval |
-| **Circle USDC** | Supplier subscription payments processed in USDC via Circle |
-| **Filecoin** | All verification documents stored on Filecoin via web3.storage, with IPFS CID recorded on-chain |
+| Track | Prize | How VerifyChain qualifies |
+|-------|-------|--------------------------|
+| **Best Projects by PL_Genesis** | $2,000 pool | Web3/crypto project solving real-world vendor fraud at global scale |
+| **Arbitrum** | Bounty | Smart contract deployed on Arbitrum Sepolia; soul-bound NFT credentials are on-chain KYC enforced at the smart contract level |
 
 ---
 
@@ -166,6 +164,21 @@ NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 NEXT_PUBLIC_ADMIN_SECRET=
 NEXT_PUBLIC_ADMIN_PASSWORD=
 ```
+
+---
+
+## Hackathon Submission
+
+Aleph Hackathon 2026
+
+Tracks:
+- Best Projects by PL_Genesis (Web3/Crypto category)
+- Arbitrum bounty track
+
+Live demo: https://verifychain-zeta.vercel.app
+GitHub: https://github.com/kaphaaya/verifychain
+Contract on Arbitrum Sepolia: 0xAcB992cdc988Dc4B7071480b3Bb24fe8686b5D35
+View on Arbiscan: https://sepolia.arbiscan.io/address/0xAcB992cdc988Dc4B7071480b3Bb24fe8686b5D35
 
 ---
 
