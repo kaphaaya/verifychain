@@ -317,8 +317,8 @@ export default function BuyerPage() {
   const [companyLoading, setCompanyLoading] = useState(false);
   // DB fallback for non-on-chain suppliers
   const [dbSupplier, setDbSupplier] = useState<any>(null);
-  // direct company-click result (bypasses chain query)
-  const [directResult, setDirectResult] = useState<{wallet:string; db:any}|null>(null);
+  // pinned result — stays visible until user clicks "Search again"
+  const [pinnedResult, setPinnedResult] = useState<{wallet:string; isValid:boolean; cred:any|null; db:any|null}|null>(null);
   // api key
   const [apiKey, setApiKey]   = useState<string|null>(null);
   const [company, setCompany] = useState("");
@@ -343,23 +343,48 @@ export default function BuyerPage() {
 
   const isLoading = walletLoading || taxidLoading || companyLoading;
 
-  // Fetch DB record (for tokenId and registry fallback)
-  // Runs when target changes (covers chip click) and also when walletData arrives
+  // When chain result arrives for wallet search, update pinnedResult (upgrade or set fresh)
   useEffect(() => {
-    if (!target) { setDbSupplier(null); return; }
+    if (!target || walletLoading) return;
+    if (walletData === undefined) return;
+    const isValid = !!(walletData as any)?.[0];
+    const cred = (walletData as any)?.[1] ?? null;
     axios.get(`${API}/api/supplier/${target}`)
-      .then(r => setDbSupplier(r.data))
-      .catch(() => setDbSupplier(null));
-  }, [target, walletData]);
+      .then(r => {
+        setDbSupplier(r.data);
+        setPinnedResult(prev => {
+          if (prev && prev.wallet === target) {
+            // Upgrade to chain result if valid; otherwise just update DB
+            if (isValid) return { ...prev, isValid: true, cred, db: r.data };
+            return { ...prev, db: r.data };
+          }
+          return { wallet: target, isValid, cred, db: r.data };
+        });
+      })
+      .catch(() => {
+        setDbSupplier(null);
+        setPinnedResult(prev => {
+          if (prev && prev.wallet === target) {
+            if (isValid) return { ...prev, isValid: true, cred };
+            return prev; // keep existing DB-based result
+          }
+          return { wallet: target, isValid, cred, db: null };
+        });
+      });
+  }, [target, walletData, walletLoading]);
 
   useEffect(() => {
-    if (!taxidData) { setDbSupplier(null); return; }
-    if (!taxIdTarget) return;
+    if (!taxidData || !taxIdTarget) return;
     const w = taxidData[2] as string;
-    if (!w || w === "0x0000000000000000000000000000000000000000") { setDbSupplier(null); return; }
+    if (!w || w === "0x0000000000000000000000000000000000000000") {
+      setPinnedResult({ wallet: "", isValid: false, cred: null, db: null });
+      return;
+    }
+    const isValid = !!(taxidData[0]);
+    const cred = taxidData[1] ?? null;
     axios.get(`${API}/api/supplier/${w}`)
-      .then(r => setDbSupplier(r.data))
-      .catch(() => setDbSupplier(null));
+      .then(r => { setDbSupplier(r.data); setPinnedResult({ wallet: w, isValid, cred, db: r.data }); })
+      .catch(() => { setDbSupplier(null); setPinnedResult({ wallet: w, isValid, cred, db: null }); });
   }, [taxidData, taxIdTarget]);
 
   const clearResults = () => {
@@ -367,7 +392,7 @@ export default function BuyerPage() {
     setTaxIdTarget(null);
     setCompanyResults(null);
     setDbSupplier(null);
-    setDirectResult(null);
+    setPinnedResult(null);
   };
 
   const search = async () => {
@@ -377,10 +402,12 @@ export default function BuyerPage() {
     if (searchBy === "wallet") {
       if (!v.startsWith("0x") || v.length !== 42)
         return toast.error("Enter a valid wallet address (0x… 42 chars)");
+      setPinnedResult(null);
       setTarget(v as `0x${string}`);
       setTaxIdTarget(null);
       setCompanyResults(null);
     } else if (searchBy === "taxid") {
+      setPinnedResult(null);
       setTaxIdTarget(v);
       setTarget(null);
       setCompanyResults(null);
@@ -390,7 +417,7 @@ export default function BuyerPage() {
       setTarget(null);
       setTaxIdTarget(null);
       setCompanyResults(null);
-      setDirectResult(null);
+      setPinnedResult(null);
       try {
         const { data: res } = await axios.get(`${API}/api/supplier/search`, { params: { q: v } });
         if (!res?.length) toast.error("No suppliers found with that name");
@@ -412,8 +439,6 @@ export default function BuyerPage() {
     company: "e.g. Acme Global Ltd",
   };
 
-  // Resolved result wallet (for taxid, comes from chain data)
-  const taxidWallet = taxidData ? (taxidData[2] as string) : "";
 
   const getApiKey = async () => {
     if (!company) return toast.error("Enter your company name");
@@ -489,11 +514,20 @@ export default function BuyerPage() {
                 letterSpacing:"0.06em",marginBottom:8}}>TRY A DEMO WALLET</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap" as const}}>
                 {DEMO_WALLETS.map(d=>(
-                  <button key={d.wallet} onClick={()=>{
+                  <button key={d.wallet} onClick={async ()=>{
                     setQuery(d.wallet);
-                    setTarget(d.wallet as `0x${string}`);
                     setTaxIdTarget(null);
                     setCompanyResults(null);
+                    setPinnedResult(null);
+                    // Immediately show from DB — no wagmi wait needed
+                    try {
+                      const { data: db } = await axios.get(`${API}/api/supplier/${d.wallet}`);
+                      setPinnedResult({ wallet: d.wallet, isValid: false, cred: null, db });
+                    } catch {
+                      setPinnedResult({ wallet: d.wallet, isValid: false, cred: null, db: null });
+                    }
+                    // Also trigger chain query in background for potential upgrade
+                    setTarget(d.wallet as `0x${string}`);
                   }} style={{
                     display:"flex",alignItems:"center",gap:6,
                     padding:"6px 12px",borderRadius:99,cursor:"pointer",
@@ -519,8 +553,8 @@ export default function BuyerPage() {
           )}
         </div>
 
-        {/* Loading */}
-        {(walletLoading || taxidLoading) && (
+        {/* Loading — only show if no result is pinned yet */}
+        {(walletLoading || taxidLoading) && !pinnedResult && (
           <div className="card" style={{textAlign:"center",padding:"44px"}}>
             <div className="spinner" style={{width:28,height:28,margin:"0 auto 14px",borderWidth:3}}/>
             <div style={{color:"var(--muted2)",fontSize:14}}>Querying Arbitrum blockchain...</div>
@@ -540,15 +574,15 @@ export default function BuyerPage() {
             {companyResults.map((r,i)=>(
               <button key={r.wallet} onClick={async ()=>{
                 setCompanyResults(null);
-                setDirectResult(null);
+                setPinnedResult(null);
                 setTarget(null);
                 // Fetch full DB record immediately — no chain wait
                 try {
                   const { data: db } = await axios.get(`${API}/api/supplier/${r.wallet}`);
-                  setDirectResult({ wallet: r.wallet, db });
+                  setPinnedResult({ wallet: r.wallet, isValid: false, cred: null, db });
                 } catch {
                   // Fallback: show what we have from search result
-                  setDirectResult({ wallet: r.wallet, db: { ...r, companyName: r.companyName, status: r.status } });
+                  setPinnedResult({ wallet: r.wallet, isValid: false, cred: null, db: { ...r } });
                 }
               }} style={{
                 width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -582,53 +616,38 @@ export default function BuyerPage() {
           </div>
         )}
 
-        {/* Direct company-click result — shown immediately from DB, no chain wait */}
-        {directResult && (
-          <ResultCard
-            data={{ isValid: false, cred: null }}
-            wallet={directResult.wallet}
-            dbSupplier={directResult.db}
-          />
-        )}
-
-        {/* Wallet / Tax-ID results */}
-        {!walletLoading && walletData && target && (
+        {/* Pinned result — stays visible until user clicks "Search again" */}
+        {pinnedResult && (
           <>
-            <ResultCard data={{isValid:walletData[0],cred:walletData[1]}} wallet={target} dbSupplier={dbSupplier}/>
-            {walletData[0] && walletData[1] && (
+            <ResultCard
+              data={{ isValid: pinnedResult.isValid, cred: pinnedResult.cred }}
+              wallet={pinnedResult.wallet}
+              dbSupplier={pinnedResult.db}
+            />
+            {pinnedResult.isValid && pinnedResult.cred && (
               <CredentialCard data={{
-                companyName: walletData[1].companyName,
-                country: walletData[1].country,
-                tier: Number(walletData[1].tier),
-                tokenId: dbSupplier?.tokenId,
-                expiresAt: Number(walletData[1].expiresAt) > 0
-                  ? new Date(Number(walletData[1].expiresAt)*1000).toISOString()
+                companyName: pinnedResult.cred.companyName,
+                country: pinnedResult.cred.country,
+                tier: Number(pinnedResult.cred.tier),
+                tokenId: pinnedResult.db?.tokenId,
+                expiresAt: Number(pinnedResult.cred.expiresAt) > 0
+                  ? new Date(Number(pinnedResult.cred.expiresAt) * 1000).toISOString()
                   : null,
-                issuedAt: Number(walletData[1].issuedAt) > 0
-                  ? new Date(Number(walletData[1].issuedAt)*1000).toISOString()
+                issuedAt: Number(pinnedResult.cred.issuedAt) > 0
+                  ? new Date(Number(pinnedResult.cred.issuedAt) * 1000).toISOString()
                   : null,
-                wallet: target,
+                wallet: pinnedResult.wallet,
               }}/>
             )}
-          </>
-        )}
-        {!taxidLoading && taxidData && taxIdTarget && (
-          <>
-            <ResultCard data={{isValid:taxidData[0],cred:taxidData[1]}} wallet={taxidWallet} dbSupplier={dbSupplier}/>
-            {taxidData[0] && taxidData[1] && (
-              <CredentialCard data={{
-                companyName: taxidData[1].companyName,
-                country: taxidData[1].country,
-                tier: Number(taxidData[1].tier),
-                expiresAt: Number(taxidData[1].expiresAt) > 0
-                  ? new Date(Number(taxidData[1].expiresAt)*1000).toISOString()
-                  : null,
-                issuedAt: Number(taxidData[1].issuedAt) > 0
-                  ? new Date(Number(taxidData[1].issuedAt)*1000).toISOString()
-                  : null,
-                wallet: taxidWallet,
-              }}/>
-            )}
+            <div style={{display:"flex",justifyContent:"center"}}>
+              <button
+                className="btn btn-ghost"
+                style={{fontSize:13,color:"var(--muted)",padding:"10px 24px"}}
+                onClick={clearResults}
+              >
+                ← Search again
+              </button>
+            </div>
           </>
         )}
 
