@@ -91,10 +91,7 @@ Want to test the full supplier flow? Go to **https://verifychain-zeta.vercel.app
 
 ## Hackathon tracks
 
-| Track | Prize | How VerifyChain qualifies |
-|-------|-------|--------------------------|
-| **Best Projects by PL_Genesis** | $2,000 pool | Web3/crypto project solving real-world vendor fraud at global scale |
-| **Arbitrum** | Bounty | Smart contract deployed on Arbitrum Sepolia; soul-bound NFT credentials are on-chain KYC enforced at the smart contract level |
+**Best Projects by PL_Genesis** — $2,000 USDC prize pool. VerifyChain is a Web3/crypto project solving real-world vendor fraud at global scale.
 
 ---
 
@@ -171,14 +168,13 @@ NEXT_PUBLIC_ADMIN_PASSWORD=
 
 Aleph Hackathon 2026
 
-Tracks:
-- Best Projects by PL_Genesis (Web3/Crypto category)
-- Arbitrum bounty track
+Track: Best Projects by PL_Genesis (Web3/Crypto category)
+Prize pool: $2,000 USDC
 
 Live demo: https://verifychain-zeta.vercel.app
 GitHub: https://github.com/kaphaaya/verifychain
-Contract on Arbitrum Sepolia: 0xAcB992cdc988Dc4B7071480b3Bb24fe8686b5D35
-View on Arbiscan: https://sepolia.arbiscan.io/address/0xAcB992cdc988Dc4B7071480b3Bb24fe8686b5D35
+Contract: 0xAcB992cdc988Dc4B7071480b3Bb24fe8686b5D35
+Arbiscan: https://sepolia.arbiscan.io/address/0xAcB992cdc988Dc4B7071480b3Bb24fe8686b5D35
 
 ---
 
