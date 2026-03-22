@@ -1,68 +1,75 @@
 # VerifyChain
 
-Built at Aleph Hackathon 2026 by Brown (Nigerian/Ghanaian, making the world better one step at a time).
+**VerifyChain is the blockchain-based supplier verification network that makes vendor fraud impossible.**
 
-Live: https://verifychain-zeta.vercel.app
-Contract: 0xAcB992cdc988Dc4B7071480b3Bb24fe8686b5D35 on Arbitrum Sepolia
-
----
-
-## Why I built this
-
-People are untrustworthy. Scams are everywhere. And when you are trying to do real business across borders, you have no way of knowing if the supplier you are about to send money to is actually legit.
-
-Every company that wants to work with a new supplier has to verify them from scratch. Call their bank. Request their registration certificate. Check government records. This takes 2 to 4 weeks every single time, for every company, even if that same supplier was already verified by 50 other companies before them.
-
-And fraud still happens anyway because documents get forged.
-
-I wanted to fix that. Not just for Nigeria or Ghana. For the world.
+Live: **https://verifychain-zeta.vercel.app**
+Contract: `0xAcB992cdc988Dc4B7071480b3Bb24fe8686b5D35` on Arbitrum Sepolia
+Built at Aleph Hackathon 2026
 
 ---
 
-## What VerifyChain does
+## The problem
 
-A supplier verifies once. We check their documents. When everything checks out, we mint a soul-bound NFT credential on the Arbitrum blockchain permanently tied to their wallet. It cannot be faked. It cannot be transferred. It lives on the blockchain forever.
+Global supply chains lose over $300 billion every year to vendor fraud. And most of it is preventable.
 
-Any buyer anywhere in the world types the supplier wallet address. 10 seconds later they get the answer straight from the blockchain. Verified or not. No middleman. No paperwork. No fraud.
+A procurement manager at a European company wants to onboard a new supplier in Nigeria. So they start the process. They request a business registration certificate. A tax clearance letter. A bank confirmation. Director IDs. They email back and forth for two weeks. They hire a third-party verification firm. They pay $800 to get a report that is three weeks old by the time it arrives. And they still cannot be sure the documents are real, because documents get forged every day and there is no way to cross-check them instantly against a source of truth.
 
-Think of it like a passport for businesses. One verification. Accepted everywhere.
+Now multiply that by every supplier, every buyer, every deal. Every company does this independently. A supplier who has been verified by 40 buyers still has to go through the same process with buyer number 41. The same documents. The same waiting. The same cost. The same risk of fraud slipping through anyway.
+
+For suppliers in emerging markets, this is even worse. A small trading company in Ghana or a logistics firm in Kenya has no brand recognition to fall back on. No institutional credit history. No shortcut. They are legitimate businesses doing real work, but they spend months just trying to prove they exist. International buyers walk away. Deals die. The gap between global commerce and the businesses that could benefit from it stays wide open.
 
 ---
 
-## Who it is for
+## The solution
 
-**Suppliers** anywhere in the world who are tired of proving themselves over and over again to every new client. Verify once. Use everywhere.
+VerifyChain fixes this once.
 
-**Procurement teams and buyers** who need to onboard new suppliers fast without getting scammed. Get a verified answer in 10 seconds instead of waiting weeks.
+A supplier submits their documents through the portal. We verify them. When everything checks out, we mint a soul-bound NFT credential on the Arbitrum blockchain, permanently tied to the supplier's wallet. It cannot be faked. It cannot be transferred. It cannot be deleted. It lives on the blockchain forever.
 
-**Governments and trade bodies** who want a trusted registry of verified businesses for public procurement. Reduce corruption. Reduce ghost supplier fraud.
+Any buyer, anywhere in the world, types the supplier's wallet address into the buyer portal. Ten seconds later they have the answer straight from the blockchain. No middleman. No paperwork. No phone calls. No waiting two weeks.
 
-**Any platform** connecting buyers and suppliers that wants to offer verified supplier status via API.
+Think of it as a passport for businesses. One verification. Trusted everywhere.
+
+---
+
+## Try it right now
+
+Go to **https://verifychain-zeta.vercel.app/buyer**
+
+These suppliers are already verified on-chain. Click any chip or paste the wallet address:
+
+| Company | Country | Wallet |
+|---------|---------|--------|
+| Amara Global Trading Ltd | Nigeria | `0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2` |
+| Ashanti Exports Ghana | Ghana | `0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db` |
+| Nairobi Logistics Ltd | Kenya | `0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaA` |
+| Dubai Trade Partners FZE | UAE | `0x617F2E2fD72FD9D5503197092aC168c91465E7f3` |
+
+**No wallet connection required.** Open the page, click a demo chip, see the verified credential pulled directly from Arbitrum in seconds.
+
+Want to test the full supplier flow? Go to **https://verifychain-zeta.vercel.app/supplier** and submit an application. Admin dashboard is at **https://verifychain-zeta.vercel.app/admin**.
 
 ---
 
 ## How it works
 
-1. Supplier submits their business registration, tax certificate, bank confirmation and director ID through the portal
-2. Admin reviews the documents
-3. On approval, a soul-bound NFT credential is minted on Arbitrum permanently tied to the supplier wallet
-4. Any buyer types the wallet address and gets a verified result in 10 seconds directly from the blockchain
-5. Supplier receives a downloadable credential card they can share with any buyer worldwide
+**Step 1 — Supplier applies.** They submit their business registration, tax certificate, bank confirmation, and director ID through the supplier portal. Documents are stored on Filecoin via web3.storage.
+
+**Step 2 — Admin reviews.** The admin dashboard shows all pending applications with document previews. Approve or reject with a reason. Rejected suppliers see exactly what to fix and can reapply.
+
+**Step 3 — NFT mints on Arbitrum.** Approval triggers an on-chain transaction. A soul-bound ERC-721 credential is minted to the supplier's wallet, encoding their company name, tax ID, country, tier, issue date, and expiry date. The supplier gets an email with their credential card.
+
+**Step 4 — Any buyer verifies instantly.** Wallet address in. Verified result out. No trust required. The blockchain is the source of truth.
 
 ---
 
-## Features
+## Who benefits
 
-- Soul-bound ERC-721 NFT credentials on Arbitrum (non-transferable, permanent)
-- Multi-business support: one wallet can hold credentials for multiple businesses
-- Rejection with reason: suppliers see exactly what to fix and can reapply up to 3 times
-- Email notifications: approval and rejection emails sent automatically via Resend
-- Shareable verification page: every verified supplier gets a public URL buyers can bookmark
-- Downloadable credential card with QR code
-- Admin dashboard with password protection, document viewer, and search
-- Buyer portal with instant blockchain verification and demo wallets to test
-- REST API for ERP and procurement system integration
-- Documents stored on Filecoin via web3.storage
+**Suppliers in emerging markets** who are tired of proving themselves from scratch to every new buyer. One verification, used across every deal, forever. No more losing contracts because you cannot afford a month-long verification process.
+
+**Enterprise procurement teams** who need to move fast without getting burned. Skip the weeks of due diligence. Get a cryptographically verified answer in seconds. Onboard new suppliers the same day you find them.
+
+**Governments and trade bodies** who want a trusted, tamper-proof registry for public procurement. Every verified supplier is publicly queryable. Ghost supplier fraud becomes impossible when every supplier credential lives on a public blockchain.
 
 ---
 
@@ -70,21 +77,57 @@ Think of it like a passport for businesses. One verification. Accepted everywher
 
 | Layer | Technology |
 |-------|------------|
-| Smart contract | Solidity + Hardhat on Arbitrum Sepolia |
+| Smart contract | Solidity + Hardhat, deployed on Arbitrum Sepolia |
 | Blockchain | Arbitrum ERC-721 soul-bound NFT |
-| Backend | Python FastAPI on Render |
+| Backend | Python FastAPI, hosted on Render |
 | Database | PostgreSQL on Render |
-| Frontend | Next.js 14 on Vercel |
+| Frontend | Next.js 14, deployed on Vercel |
 | Wallet | MetaMask + RainbowKit + Wagmi |
-| Documents | Filecoin via web3.storage |
+| Document storage | Filecoin via web3.storage |
 | Email | Resend |
 | Payments | Circle USDC |
 
 ---
 
+## Hackathon tracks
+
+| Track | How VerifyChain qualifies |
+|-------|--------------------------|
+| **General** | Full-stack dApp solving a real-world problem at global scale |
+| **Arbitrum** | Smart contract deployed on Arbitrum Sepolia; soul-bound NFT credentials minted on every approval |
+| **Circle USDC** | Supplier subscription payments processed in USDC via Circle |
+| **Filecoin** | All verification documents stored on Filecoin via web3.storage, with IPFS CID recorded on-chain |
+
+---
+
+## Business model
+
+| Plan | Price |
+|------|-------|
+| Monthly | $29/month |
+| Quarterly | $79/quarter |
+| Semi-annual | $149/6 months |
+| Annual | $199/year |
+| Enterprise API | $499/month, unlimited queries |
+
+The API is the long-term play. Every ERP, every procurement platform, every trade finance system needs verified supplier data. We become the trust layer they all plug into.
+
+---
+
+## What comes next
+
+Right now a human reviews documents. That is fine for an MVP. It does not scale.
+
+The next version removes the human. Computer vision to detect forged documents before they hit the queue. Government API integrations to verify company registrations in real time against official registries in 50+ countries. Chainlink oracles to record that external verification on-chain so it is cryptographically tied to the source data, not just our word for it. A dynamic trust score built from verification history, buyer feedback, and transaction volume.
+
+The end goal: any buyer, anywhere in the world, verifies any supplier in 10 seconds and trusts that result completely. No humans in the loop. No room for fraud. Just truth on the blockchain.
+
+---
+
 ## Run it locally
+
 ```bash
-# Contract
+# Smart contract
 cd contracts
 npm install
 npx hardhat compile
@@ -94,21 +137,17 @@ npx hardhat run scripts/deploy.js --network arbitrumSepolia
 # Backend
 cd backend
 pip install -r requirements.txt
-cp .env.example .env
+cp .env.example .env        # fill in your keys
 python main.py
 
 # Frontend
 cd frontend
 npm install
-cp .env.local.example .env.local
+cp .env.local.example .env.local   # fill in your keys
 npm run dev
 ```
 
----
-
-## Environment variables
-
-Backend:
+**Backend env vars:**
 ```
 CONTRACT_ADDRESS=
 ADMIN_PRIVATE_KEY=
@@ -119,7 +158,7 @@ RESEND_API_KEY=
 ADMIN_SECRET=
 ```
 
-Frontend:
+**Frontend env vars:**
 ```
 NEXT_PUBLIC_API_URL=
 NEXT_PUBLIC_CONTRACT_ADDRESS=
@@ -130,36 +169,12 @@ NEXT_PUBLIC_ADMIN_PASSWORD=
 
 ---
 
-## What comes next
+## Built by
 
-Right now a human reviews the documents. That is fine for an MVP but it does not scale.
+Brown. Nigerian and Ghanaian. Solo builder. Making the world better one step at a time.
 
-The next version automates everything. Computer vision to detect forged documents. Government API integrations to verify company registration in real time against official registries in 50+ countries. Chainlink oracles to record that verification on-chain so it is cryptographically tied to the source data. Facial recognition to match the director passport. A dynamic trust score based on verification history and buyer feedback.
-
-The end goal is simple. Any company anywhere in the world should be able to verify any supplier in 10 seconds and trust that result completely. No humans in the loop. No room for fraud. Just truth on the blockchain.
+**Contact:** aziz.kafayat@gmail.com
 
 ---
 
-## Business model
-
-| Plan | Price |
-|------|-------|
-| Monthly verification | $29/month |
-| Quarterly | $79/quarter |
-| Semi-annual | $149/6 months |
-| Annual | $199/year |
-| Enterprise buyer API | $499/month |
-
----
-
-## Contact
-
-General: aziz.kafayat@gmail.com
-Investment: aziz.kafayat@gmail.com
-
----
-
-## Disclaimer
-
-Currently running on Arbitrum Sepolia testnet for demonstration purposes. Not real money.
-
+*Running on Arbitrum Sepolia testnet for demonstration. No real money involved.*
