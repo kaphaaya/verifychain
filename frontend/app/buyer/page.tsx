@@ -524,7 +524,7 @@ export default function BuyerPage() {
         )}
 
         {/* Company name results list */}
-        {!companyLoading && companyResults && companyResults.length > 0 && !target && (
+        {!companyLoading && companyResults && companyResults.length > 0 && (
           <div className="card animate-in" style={{padding:0,overflow:"hidden"}}>
             <div style={{
               padding:"14px 22px",background:"var(--surface2)",
@@ -535,6 +535,8 @@ export default function BuyerPage() {
             </div>
             {companyResults.map((r,i)=>(
               <button key={r.wallet} onClick={()=>{
+                setSearchBy("wallet");
+                setQuery(r.wallet);
                 setTarget(r.wallet as `0x${string}`);
                 setCompanyResults(null);
               }} style={{

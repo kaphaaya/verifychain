@@ -161,6 +161,34 @@ async def revoke_supplier(supplier_id: int, body: RevokeBody, db: AsyncSession =
     return {"success": True, "txHash": tx_hash}
 
 
+@router.post("/seed-demo", dependencies=[Depends(require_admin)])
+async def seed_demo(db: AsyncSession = Depends(get_db)):
+    """Seed demo suppliers into DB for hackathon judges — idempotent."""
+    demos = [
+        {"wallet": "0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2", "company": "Amara Global Trading",  "tax_id": "DEMO-NG-001", "country": "Nigeria",              "tier": 2},
+        {"wallet": "0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db", "company": "Ashanti Exports",        "tax_id": "DEMO-GH-001", "country": "Ghana",                "tier": 1},
+        {"wallet": "0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaA", "company": "Nairobi Logistics",     "tax_id": "DEMO-KE-001", "country": "Kenya",                "tier": 2},
+        {"wallet": "0x617F2E2fD72FD9D5503197092aC168c91465E7f3", "company": "Dubai Trade Partners",  "tax_id": "DEMO-AE-001", "country": "United Arab Emirates", "tier": 3},
+    ]
+    seeded, skipped = [], []
+    for d in demos:
+        existing = (await db.execute(select(Supplier).where(Supplier.tax_id == d["tax_id"]))).scalar_one_or_none()
+        if existing:
+            skipped.append(d["company"]); continue
+        s = Supplier(
+            wallet=d["wallet"], company_name=d["company"], tax_id=d["tax_id"],
+            country=d["country"], tier=d["tier"], status="approved",
+            email="demo@verifychain.io", docs_ipfs="ipfs://demo",
+            approved_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(days=365),
+            validity_days=365,
+        )
+        db.add(s)
+        seeded.append(d["company"])
+    await db.commit()
+    return {"seeded": seeded, "skipped": skipped}
+
+
 API_BASE = os.getenv("API_BASE_URL", "")
 
 @router.get("/supplier/{supplier_id}/documents", dependencies=[Depends(require_admin)])
