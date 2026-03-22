@@ -317,6 +317,8 @@ export default function BuyerPage() {
   const [companyLoading, setCompanyLoading] = useState(false);
   // DB fallback for non-on-chain suppliers
   const [dbSupplier, setDbSupplier] = useState<any>(null);
+  // direct company-click result (bypasses chain query)
+  const [directResult, setDirectResult] = useState<{wallet:string; db:any}|null>(null);
   // api key
   const [apiKey, setApiKey]   = useState<string|null>(null);
   const [company, setCompany] = useState("");
@@ -365,6 +367,7 @@ export default function BuyerPage() {
     setTaxIdTarget(null);
     setCompanyResults(null);
     setDbSupplier(null);
+    setDirectResult(null);
   };
 
   const search = async () => {
@@ -387,6 +390,7 @@ export default function BuyerPage() {
       setTarget(null);
       setTaxIdTarget(null);
       setCompanyResults(null);
+      setDirectResult(null);
       try {
         const { data: res } = await axios.get(`${API}/api/supplier/search`, { params: { q: v } });
         if (!res?.length) toast.error("No suppliers found with that name");
@@ -534,11 +538,18 @@ export default function BuyerPage() {
               {companyResults.length} RESULT{companyResults.length>1?"S":""} FOUND — CLICK TO VERIFY ON-CHAIN
             </div>
             {companyResults.map((r,i)=>(
-              <button key={r.wallet} onClick={()=>{
-                setSearchBy("wallet");
-                setQuery(r.wallet);
-                setTarget(r.wallet as `0x${string}`);
+              <button key={r.wallet} onClick={async ()=>{
                 setCompanyResults(null);
+                setDirectResult(null);
+                setTarget(null);
+                // Fetch full DB record immediately — no chain wait
+                try {
+                  const { data: db } = await axios.get(`${API}/api/supplier/${r.wallet}`);
+                  setDirectResult({ wallet: r.wallet, db });
+                } catch {
+                  // Fallback: show what we have from search result
+                  setDirectResult({ wallet: r.wallet, db: { ...r, companyName: r.companyName, status: r.status } });
+                }
               }} style={{
                 width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
                 padding:"16px 22px",cursor:"pointer",textAlign:"left" as const,
@@ -569,6 +580,15 @@ export default function BuyerPage() {
               </button>
             ))}
           </div>
+        )}
+
+        {/* Direct company-click result — shown immediately from DB, no chain wait */}
+        {directResult && (
+          <ResultCard
+            data={{ isValid: false, cred: null }}
+            wallet={directResult.wallet}
+            dbSupplier={directResult.db}
+          />
         )}
 
         {/* Wallet / Tax-ID results */}
