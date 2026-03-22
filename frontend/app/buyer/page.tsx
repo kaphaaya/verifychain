@@ -342,13 +342,13 @@ export default function BuyerPage() {
   const isLoading = walletLoading || taxidLoading || companyLoading;
 
   // Fetch DB record (for tokenId and registry fallback)
+  // Runs when target changes (covers chip click) and also when walletData arrives
   useEffect(() => {
-    if (!walletData) { setDbSupplier(null); return; }
-    if (!target) return;
+    if (!target) { setDbSupplier(null); return; }
     axios.get(`${API}/api/supplier/${target}`)
       .then(r => setDbSupplier(r.data))
       .catch(() => setDbSupplier(null));
-  }, [walletData, target]);
+  }, [target, walletData]);
 
   useEffect(() => {
     if (!taxidData) { setDbSupplier(null); return; }

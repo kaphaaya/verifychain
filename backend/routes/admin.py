@@ -95,7 +95,8 @@ async def approve_supplier(supplier_id: int, body: ApproveBody, db: AsyncSession
     supplier.status = "approved"
     supplier.tier = body.tier
     supplier.approved_at = datetime.utcnow()
-    supplier.expires_at = datetime.utcnow() + timedelta(days=365)
+    validity = supplier.validity_days if supplier.validity_days else 365
+    supplier.expires_at = datetime.utcnow() + timedelta(days=validity)
     try:
         supplier.rejection_reason = None
     except:

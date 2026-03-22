@@ -180,7 +180,7 @@ def _send_tx(fn):
         'type':                2,
     })
     signed  = w3.eth.account.sign_transaction(tx, private_key=ADMIN_PRIVATE_KEY)
-    tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
     return receipt.transactionHash.hex(), receipt.status, receipt
 
